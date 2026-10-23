@@ -13,7 +13,9 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/codersgyan/the-food-app/internal/fake"
 	"github.com/codersgyan/the-food-app/internal/handler"
+	"github.com/codersgyan/the-food-app/internal/service"
 )
 
 func main() {
@@ -24,7 +26,10 @@ func main() {
 }
 
 func run() error {
-	cfg := loadConfig()
+	cfg, err := loadConfig()
+	if err != nil {
+		return err
+	}
 
 	// Ctrl+C or a SIGTERM from Docker cancels ctx, and we shut down cleanly.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
@@ -39,9 +44,13 @@ func run() error {
 		return err
 	}
 
+	svc := service.New(service.Deps{
+		OTP: &fake.OTP{Delay: cfg.otpDelay},
+	})
+
 	srv := &http.Server{
 		Addr:              cfg.addr,
-		Handler:           handler.New(),
+		Handler:           handler.New(svc),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,

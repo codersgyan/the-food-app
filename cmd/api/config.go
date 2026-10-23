@@ -2,6 +2,8 @@ package main
 
 import (
 	"os"
+
+	"github.com/codersgyan/the-food-app/internal/fake"
 )
 
 // config is everything the server reads from the environment.
@@ -9,13 +11,19 @@ import (
 type config struct {
 	addr        string
 	databaseURL string
+	otpDelay    fake.Delay
 }
 
-func loadConfig() config {
-	return config{
+func loadConfig() (config, error) {
+	cfg := config{
 		addr:        env("ADDR", ":8080"),
 		databaseURL: env("DATABASE_URL", "postgres://food:food@localhost:5440/food?sslmode=disable"),
 	}
+	var err error
+	if cfg.otpDelay, err = fake.ParseDelay(env("FAKEOTP_DELAY", "200ms-500ms")); err != nil {
+		return config{}, err
+	}
+	return cfg, nil
 }
 
 func env(key, fallback string) string {

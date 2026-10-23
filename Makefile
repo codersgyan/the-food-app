@@ -1,4 +1,4 @@
-.PHONY: db db-down migrate migrate-down run seed
+.PHONY: db db-down migrate migrate-down run seed test
 
 # Start Postgres and wait until it accepts connections.
 db:
@@ -23,3 +23,7 @@ run:
 # Empty the database and fill it with sample restaurants, dishes and users.
 seed:
 	go run ./cmd/seed
+
+# Run every test. Needs Postgres running (make db).
+test:
+	go test ./...
