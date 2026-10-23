@@ -55,9 +55,11 @@ func run() error {
 		Store: store.New(pool),
 		OTP:   &fake.OTP{Delay: cfg.otpDelay},
 		Payments: &fake.Payments{
-			Delay:      cfg.payDelay,
-			WebhookURL: cfg.payWebhookURL,
-			Secret:     cfg.paymentWebhookSecret,
+			Delay:         cfg.payDelay,
+			WebhookURL:    cfg.payWebhookURL,
+			Secret:        cfg.paymentWebhookSecret,
+			FailRate:      cfg.payFailRate,
+			DuplicateRate: cfg.payDuplicateRate,
 		},
 		Tokens: tokens,
 

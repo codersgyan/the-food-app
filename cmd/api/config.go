@@ -22,6 +22,8 @@ type config struct {
 	paymentWebhookSecret string
 	payDelay             fake.Delay
 	payWebhookURL        string
+	payFailRate          float64
+	payDuplicateRate     float64
 }
 
 func loadConfig() (config, error) {
@@ -40,10 +42,25 @@ func loadConfig() (config, error) {
 	if cfg.payDelay, err = fake.ParseDelay(env("FAKEPAY_DELAY", "1s-2s")); err != nil {
 		return config{}, err
 	}
+	if cfg.payFailRate, err = rate("FAKEPAY_FAIL_RATE"); err != nil {
+		return config{}, err
+	}
+	if cfg.payDuplicateRate, err = rate("FAKEPAY_DUPLICATE_RATE"); err != nil {
+		return config{}, err
+	}
 	if cfg.nearRadiusKm, err = strconv.ParseFloat(env("NEAR_RADIUS_KM", "7"), 64); err != nil {
 		return config{}, fmt.Errorf("NEAR_RADIUS_KM: %w", err)
 	}
 	return cfg, nil
+}
+
+// rate reads a share from 0 to 1. It's 0 when the variable isn't set.
+func rate(key string) (float64, error) {
+	r, err := strconv.ParseFloat(env(key, "0"), 64)
+	if err != nil || r < 0 || r > 1 {
+		return 0, fmt.Errorf("%s must be a number from 0 to 1", key)
+	}
+	return r, nil
 }
 
 func env(key, fallback string) string {

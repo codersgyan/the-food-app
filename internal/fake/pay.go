@@ -9,6 +9,7 @@ import (
 	"encoding/hex"
 	"encoding/json/v2"
 	"log/slog"
+	mrand "math/rand/v2"
 	"net/http"
 	"time"
 )
@@ -18,8 +19,9 @@ import (
 // then approves the payment in their UPI app, which takes a moment, and the
 // provider tells our server how it went by calling our webhook.
 //
-// This fake approves every payment after Delay, as if every customer typed
-// the right UPI PIN, and calls the webhook itself.
+// This fake approves payments after Delay and calls the webhook itself. By
+// default every payment goes through, once. Real providers aren't that
+// tidy, so FailRate and DuplicateRate let you make it behave like one.
 type Payments struct {
 	// Delay is how long the customer takes to approve the payment.
 	Delay Delay
@@ -27,7 +29,13 @@ type Payments struct {
 	WebhookURL string
 	// Secret signs every webhook, so our server can check it came from the provider.
 	Secret string
-	Client *http.Client
+	// FailRate is the share of payments that fail, from 0 (none) to 1 (all),
+	// like a customer typing the wrong PIN.
+	FailRate float64
+	// DuplicateRate is the share of webhooks sent twice. Real providers
+	// promise to send each webhook at least once, not exactly once.
+	DuplicateRate float64
+	Client        *http.Client
 }
 
 // Webhook is what the provider sends to our server.
@@ -51,7 +59,14 @@ func (p *Payments) approve(orderID int64, paymentID string) {
 	if err := p.Delay.wait(ctx); err != nil {
 		return
 	}
-	p.send(ctx, Webhook{OrderID: orderID, PaymentID: paymentID, Status: "captured"})
+	w := Webhook{OrderID: orderID, PaymentID: paymentID, Status: "captured"}
+	if mrand.Float64() < p.FailRate {
+		w.Status = "failed"
+	}
+	p.send(ctx, w)
+	if mrand.Float64() < p.DuplicateRate {
+		p.send(ctx, w)
+	}
 }
 
 func (p *Payments) send(ctx context.Context, w Webhook) {
