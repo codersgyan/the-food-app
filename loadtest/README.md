@@ -31,7 +31,8 @@ Requests ask for gzip, like a phone does, so nginx compresses the responses.
 | `test.txt` | the test's settings |
 | `env-before.txt`, `env-after.txt` | the API server: machine, versions, Postgres and nginx settings, row counts, nginx config, git commit |
 | `runner.txt` | the test runner's machine and k6 version |
-| `steps.csv` | when each step started and ended, in UTC |
+| `steps.csv` | when each step started and ended, in UTC, and how many lines nginx wrote to its error log |
+| `nginx-error.log` | everything nginx wrote to its error log during the test |
 | `k6-<n>x.txt` | each step's results: count, rate, p50, p95, p99, max and failures for every kind of request |
 | `k6-<n>x.json` | everything k6 measured in that step |
 | `pg-<n>x-before.json`, `pg-<n>x-after.json` | Postgres's counters around each step: transactions, pages read from memory and from disk, and sequential and index scans for each table |

@@ -53,6 +53,9 @@ step length:      $DURATION, with $REST s rest between steps
 tablets:          $TABLETS, each asking for new orders every $TABLET_INTERVAL s
 EOF
 
+# Remember where nginx's error log ends now, to save only what this test adds.
+NGINX_LOG_START=$(api 'sudo stat -c %s /var/log/nginx/error.log')
+
 echo "starting the monitors"
 api 'A=$(sudo docker inspect -f "{{.Id}}" the-food-app-prod-api-1); P=$(sudo docker inspect -f "{{.Id}}" the-food-app-prod-postgres-1);
   sudo nohup python3 /tmp/monitor.py --out /tmp/monitor.csv --part nginx=nginx.service \
@@ -63,14 +66,16 @@ stop_monitors() {
   runner 'pkill -f "^python3 /tmp/loadtest/monitor.py"' || true
   scp -q "${SSH_OPTS[@]}" "ubuntu@$API_HOST:/tmp/monitor.csv" "$OUT/monitor-api.csv" || true
   scp -q "${SSH_OPTS[@]}" "ubuntu@$RUNNER_HOST:/tmp/loadtest/monitor.csv" "$OUT/monitor-runner.csv" || true
+  api "sudo tail -c +$((NGINX_LOG_START + 1)) /var/log/nginx/error.log" > "$OUT/nginx-error.log" || true
 }
 trap stop_monitors EXIT
 sleep 10 # a few quiet samples before the first step
 
-echo "multiplier,start_utc,end_utc" > "$OUT/steps.csv"
+echo "multiplier,start_utc,end_utc,nginx_errors" > "$OUT/steps.csv"
 for M in $MULTS; do
   echo "=== step ${M}x"
   pg_stats "$OUT/pg-${M}x-before.json"
+  LOG_BEFORE=$(api 'sudo wc -l < /var/log/nginx/error.log')
   START=$(date -u +%FT%TZ)
   runner "cd /tmp/loadtest && ulimit -n 65535 && k6 run -q \
     -e BASE_URL=$BASE_URL -e MULT=$M -e DURATION=$DURATION \
@@ -79,7 +84,9 @@ for M in $MULTS; do
   END=$(date -u +%FT%TZ)
   pg_stats "$OUT/pg-${M}x-after.json"
   scp -q "${SSH_OPTS[@]}" "ubuntu@$RUNNER_HOST:/tmp/loadtest/k6-${M}x.json" "$OUT/"
-  echo "$M,$START,$END" >> "$OUT/steps.csv"
+  NGINX_ERRORS=$(( $(api 'sudo wc -l < /var/log/nginx/error.log') - LOG_BEFORE ))
+  echo "$M,$START,$END,$NGINX_ERRORS" >> "$OUT/steps.csv"
+  echo "nginx wrote $NGINX_ERRORS lines to its error log in this step"
 
   # Stop when menus are slower than the requirement, or too many requests fail.
   P99=$(jq '.metrics["http_req_duration{name:menu}"].values["p(99)"]' "$OUT/k6-${M}x.json")
