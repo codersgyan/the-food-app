@@ -145,6 +145,10 @@ curl -sI -H 'Accept-Encoding: gzip' localhost:8000/v1/restaurants/1/menu
 
 The config is in `deploy/nginx/local.conf`. The one for the real server, with HTTPS, is `deploy/nginx/food-api.sys0.in.conf`, and [deploy/README.md](deploy/README.md) has the steps to run the app at `https://food-api.sys0.in`.
 
+## Run it on a server
+
+[deploy/README.md](deploy/README.md) has every step to run the app on one Ubuntu server at `https://food-api.sys0.in`: the API server and Postgres in Docker, with nginx in front of them on the server itself, and a free HTTPS certificate from Let's Encrypt that renews itself.
+
 ## Every request
 
 Here's every request, as we designed them in the API lesson.
