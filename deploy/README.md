@@ -4,6 +4,8 @@ These are the steps to run the app on one Linux server, behind nginx, at `https:
 
 The commands are for Ubuntu 24.04. You need a server with a public IP address, and Postgres running somewhere the server can reach.
 
+On the server, nginx is installed with apt and runs on its own, not in Docker. The nginx in `compose.yaml` (`make proxy`) is only for trying the proxy on your laptop, with no domain and no certificate.
+
 ## 1. Point the domain at the server
 
 Add a DNS `A` record for `food-api.sys0.in` with the server's IP address. Check it before going on:
@@ -12,7 +14,14 @@ Add a DNS `A` record for `food-api.sys0.in` with the server's IP address. Check 
 dig +short food-api.sys0.in
 ```
 
-## 2. Build and install the API server
+## 2. Get the code and the API server onto the server
+
+On the server, clone the repo. The config files in `deploy/` come from here, and every command from now on runs inside this folder on the server, unless it says "on your laptop":
+
+```sh
+git clone https://github.com/codersgyan/the-food-app.git
+cd the-food-app
+```
 
 On your laptop, build a Linux binary and copy it to the server:
 
@@ -29,13 +38,9 @@ sudo install /tmp/food-api /usr/local/bin/food-api
 
 ## 3. Give it its settings
 
-The server reads its settings from `/etc/food-api.env`. It's the same `KEY=value` format as `.env` on your laptop, and systemd loads it when it starts the server. Copy `.env.example` from the repo to the server as a starting point:
+The server reads its settings from `/etc/food-api.env`. It's the same `KEY=value` format as `.env` on your laptop, and systemd loads it when it starts the server. We start from `.env.example`.
 
-```sh
-scp .env.example you@food-api.sys0.in:/tmp/
-```
-
-On the server, make two new secrets. Never reuse the values from `.env.example`: they're in a public repo.
+Make two new secrets. Never reuse the values from `.env.example`: they're in a public repo.
 
 ```sh
 openssl rand -hex 32   # for JWT_SECRET
@@ -45,7 +50,7 @@ openssl rand -hex 32   # for PAYMENT_WEBHOOK_SECRET
 Then install the file, and make it readable only by root, because it holds the secrets:
 
 ```sh
-sudo install -m 600 /tmp/.env.example /etc/food-api.env
+sudo install -m 600 .env.example /etc/food-api.env
 sudo nano /etc/food-api.env
 ```
 
@@ -59,7 +64,7 @@ DATABASE_URL=postgres://food:…@…:5432/food
 FAKEPAY_WEBHOOK_URL=http://127.0.0.1:8080/payments/webhook
 ```
 
-Create the tables from your laptop, pointing at the server's database:
+On your laptop, create the tables, pointing at the server's database:
 
 ```sh
 DATABASE_URL=postgres://food:…@…:5432/food make migrate seed
