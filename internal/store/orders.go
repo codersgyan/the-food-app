@@ -97,3 +97,25 @@ func (s *Store) orderItems(ctx context.Context, orderID int64) ([]OrderItem, err
 	}
 	return items, rows.Err()
 }
+
+// SetStatus moves an order from one status to another, and reports whether it
+// did. The WHERE status = from is the guard: if two requests try the same
+// move at the same moment, only one of them finds the order still in from.
+func (s *Store) SetStatus(ctx context.Context, id int64, from, to string) (bool, error) {
+	tag, err := s.db.Exec(ctx, `
+		UPDATE orders SET status = $3, updated_at = now()
+		WHERE id = $1 AND status = $2`,
+		id, from, to,
+	)
+	return tag.RowsAffected() == 1, err
+}
+
+// SetPaymentID saves the payment provider's ID for the order's payment.
+func (s *Store) SetPaymentID(ctx context.Context, id int64, paymentID string) error {
+	_, err := s.db.Exec(ctx, `
+		UPDATE orders SET payment_id = $2, updated_at = now()
+		WHERE id = $1`,
+		id, paymentID,
+	)
+	return err
+}

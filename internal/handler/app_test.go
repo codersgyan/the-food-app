@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -43,10 +44,25 @@ func TestMain(m *testing.M) {
 
 // app is the whole server, running against an empty test database.
 type app struct {
-	t      *testing.T
-	srv    *httptest.Server
-	pool   *pgxpool.Pool
-	tokens *auth.Tokens
+	t        *testing.T
+	srv      *httptest.Server
+	pool     *pgxpool.Pool
+	tokens   *auth.Tokens
+	payments *countingPayments
+}
+
+const webhookSecret = "test-webhook-secret"
+
+// countingPayments is the fake payment provider, counting how many times
+// we asked it to charge a customer.
+type countingPayments struct {
+	*fake.Payments
+	charges atomic.Int32
+}
+
+func (p *countingPayments) Charge(ctx context.Context, orderID int64, amount int) (string, error) {
+	p.charges.Add(1)
+	return p.Payments.Charge(ctx, orderID, amount)
 }
 
 func newApp(t *testing.T) *app {
@@ -63,17 +79,20 @@ func newApp(t *testing.T) *app {
 	require.NoError(t, err)
 
 	tokens := auth.NewTokens("test-secret", time.Hour)
+	payments := &countingPayments{Payments: &fake.Payments{Secret: webhookSecret}}
 	svc := service.New(service.Deps{
-		Store:  store.New(pool),
-		OTP:    &fake.OTP{},
-		Tokens: tokens,
+		Store:    store.New(pool),
+		OTP:      &fake.OTP{},
+		Payments: payments,
+		Tokens:   tokens,
 
 		NearRadiusKm: 7,
 	})
 	srv := httptest.NewServer(handler.New(svc, tokens))
 	t.Cleanup(srv.Close)
+	payments.WebhookURL = srv.URL + "/payments/webhook"
 
-	return &app{t: t, srv: srv, pool: pool, tokens: tokens}
+	return &app{t: t, srv: srv, pool: pool, tokens: tokens, payments: payments}
 }
 
 type response struct {

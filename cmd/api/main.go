@@ -52,8 +52,13 @@ func run() error {
 
 	tokens := auth.NewTokens(cfg.jwtSecret, tokenTTL)
 	svc := service.New(service.Deps{
-		Store:  store.New(pool),
-		OTP:    &fake.OTP{Delay: cfg.otpDelay},
+		Store: store.New(pool),
+		OTP:   &fake.OTP{Delay: cfg.otpDelay},
+		Payments: &fake.Payments{
+			Delay:      cfg.payDelay,
+			WebhookURL: cfg.payWebhookURL,
+			Secret:     cfg.paymentWebhookSecret,
+		},
 		Tokens: tokens,
 
 		NearRadiusKm: cfg.nearRadiusKm,

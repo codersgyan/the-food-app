@@ -7,9 +7,10 @@ import (
 
 // Deps is everything the services need from outside.
 type Deps struct {
-	Store  *store.Store
-	OTP    OTPSender
-	Tokens *auth.Tokens
+	Store    *store.Store
+	OTP      OTPSender
+	Payments PaymentProvider
+	Tokens   *auth.Tokens
 	// NearRadiusKm is how far a restaurant can be and still deliver to a customer.
 	NearRadiusKm float64
 }
@@ -20,13 +21,16 @@ type Services struct {
 	Users       *UserService
 	Restaurants *RestaurantService
 	Orders      *OrderService
+	Payments    *PaymentService
 }
 
 func New(d Deps) *Services {
+	orders := &OrderService{store: d.Store}
 	return &Services{
 		Auth:        &AuthService{store: d.Store, otp: d.OTP, tokens: d.Tokens},
 		Users:       &UserService{store: d.Store},
 		Restaurants: &RestaurantService{store: d.Store, nearRadiusKm: d.NearRadiusKm},
-		Orders:      &OrderService{store: d.Store},
+		Orders:      orders,
+		Payments:    &PaymentService{store: d.Store, payments: d.Payments, orders: orders},
 	}
 }
