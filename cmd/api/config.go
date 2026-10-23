@@ -50,7 +50,7 @@ func mustLoadConfig() config {
 func mustEnv(key string) string {
 	v := os.Getenv(key)
 	if v == "" {
-		panic(key + " is not set: on your laptop, run cp .env.example .env")
+		panic(key + " is not set: add it to .env, or to /etc/food-api.env on a server (see .env.example)")
 	}
 	return v
 }
