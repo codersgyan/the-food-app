@@ -24,6 +24,14 @@
 #
 #     SEARCH=tablets MULT=1 ./run.sh tablets-limit "0 20000"
 #
+# NOSTOP=1 runs every step even after one fails, to repeat a step:
+#
+#     NOSTOP=1 ./run.sh repeats "1 1.5 1.6 1 1.5 1.6 1 1.5 1.6"
+#
+# Before the first step, a one-minute warm-up at 0.5x fills Postgres's and
+# the operating system's caches. It isn't recorded. NOTE is written to
+# test.txt, for anything you changed by hand, like a dropped index.
+#
 # The runner needs k6 and the API server needs the app from deploy/README.md,
 # seeded with: run --rm api seed -restaurants 20000 -dishes 100 -customers 10000
 set -euo pipefail
@@ -36,6 +44,8 @@ TABLETS=${TABLETS:-0}
 TABLET_INTERVAL=${TABLET_INTERVAL:-10}
 DURATION=${DURATION:-3m}
 REST=${REST:-30} # seconds between steps, so one step's tail doesn't spill into the next
+SEARCH_GAP=${SEARCH_GAP:-0.1} # SEARCH=1 stops when the multipliers are this close
+NOTE=${NOTE:-}
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 OUT="$HERE/results/$(date -u +%Y-%m-%d)-$NAME"
@@ -69,6 +79,7 @@ target:           $BASE_URL
 multipliers:      $MULTS (1x = 17 orders a second)
 step length:      $DURATION, with $REST s rest between steps
 tablets:          $TABLETS, each asking for new orders every $TABLET_INTERVAL s
+note:             ${NOTE:-none}
 EOF
 
 # Remember where nginx's error log ends now, to save only what this test adds.
@@ -89,12 +100,19 @@ stop_monitors() {
 trap stop_monitors EXIT
 sleep 10 # a few quiet samples before the first step
 
-echo "multiplier,tablets,start_utc,end_utc,menu_p99_ms,failed_pct,dropped_pct,nginx_errors,passed" > "$OUT/steps.csv"
+echo "warming up for a minute (not recorded)"
+runner "cd /tmp/loadtest && ulimit -n 65535 && k6 run -q -e BASE_URL=$BASE_URL -e MULT=0.5 -e DURATION=1m \
+  -e TOKENS=tokens.json -e OUT=/dev/null shop.js > /dev/null" || true
+sleep "$REST"
+
+echo "step,multiplier,tablets,start_utc,end_utc,menu_p99_ms,failed_pct,dropped_pct,nginx_errors,passed" > "$OUT/steps.csv"
+STEP=0
 
 # run_step runs one step with multiplier $1 and $2 tablets, and sets PASSED to 1 or 0.
 run_step() {
   local M=$1 T=$2 S
-  S="${M}x-${T}t" # names this step's files
+  STEP=$((STEP + 1))
+  S="$(printf %02d "$STEP")-${M}x-${T}t" # names this step's files
   echo "=== step ${M}x, $T tablets"
   pg_stats "$OUT/pg-$S-before.json"
   local LOG_BEFORE START END NGINX_ERRORS P99 FAILED DROPPED
@@ -115,13 +133,13 @@ run_step() {
     | (.metrics.iterations.values.count // 0) as $i
     | if $d + $i == 0 then 0 else ($d / ($d + $i) * 100 | . * 100 | round / 100) end' "$OUT/k6-$S.json")
   if jq -en "$P99 < 1000 and $FAILED < 1 and $DROPPED < 1" > /dev/null; then PASSED=1; else PASSED=0; fi
-  echo "$M,$T,$START,$END,$P99,$FAILED,$DROPPED,$NGINX_ERRORS,$PASSED" >> "$OUT/steps.csv"
+  echo "$STEP,$M,$T,$START,$END,$P99,$FAILED,$DROPPED,$NGINX_ERRORS,$PASSED" >> "$OUT/steps.csv"
   echo "menu p99 ${P99} ms, failed ${FAILED}%, dropped ${DROPPED}%, nginx errors $NGINX_ERRORS: $([ "$PASSED" = 1 ] && echo passed || echo FAILED)"
 }
 
 if [ "${SEARCH:-0}" = 1 ]; then
   read -r LOW HIGH <<< "$MULTS"
-  while jq -en "$HIGH - $LOW > 0.1" > /dev/null; do
+  while jq -en "$HIGH - $LOW > $SEARCH_GAP" > /dev/null; do
     MID=$(jq -n "($LOW + $HIGH) / 2 * 100 | round / 100")
     run_step "$MID" "$TABLETS"
     if [ "$PASSED" = 1 ]; then LOW=$MID; else HIGH=$MID; fi
@@ -141,7 +159,10 @@ elif [ "${SEARCH:-0}" = tablets ]; then
 else
   for M in $MULTS; do
     run_step "$M" "$TABLETS"
-    [ "$PASSED" = 1 ] || { echo "stopping: the server didn't keep up at ${M}x"; break; }
+    if [ "$PASSED" != 1 ] && [ "${NOSTOP:-0}" != 1 ]; then
+      echo "stopping: the server didn't keep up at ${M}x"
+      break
+    fi
     sleep "$REST"
   done
 fi
