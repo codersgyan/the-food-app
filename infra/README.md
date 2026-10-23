@@ -1,6 +1,6 @@
 # Servers on AWS, with one command
 
-This folder creates the two servers our load tests run on, sets them up, and deletes them again. We use it after each module of the course: create the servers, run the tests, keep the results, and delete everything, so nothing keeps costing money.
+This folder creates the two servers our load tests run on, sets them up, and deletes them again. We use it after each module of the path: create the servers, run the tests, keep the results, and delete everything, so nothing keeps costing money.
 
 It uses Terraform, a tool that creates cloud resources from files that describe them. `main.tf` describes everything:
 

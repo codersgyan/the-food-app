@@ -1,8 +1,8 @@
 # The food app
 
-This is the food delivery app we design in the system design course, written in Go. It has every request we designed for the customer's app and the restaurant's tablet, and the six tables from the data modeling lesson.
+This is the food delivery app we design in the system design structured learning path, written in Go. It has every request we designed for the customer's app and the restaurant's tablet, and the six tables from the data modeling lesson.
 
-We'll keep coming back to this app as the course goes on. When a lesson says something about it, like "one server is enough at the dinner rush", we test that claim on this code.
+We'll keep coming back to this app as the path goes on. When a lesson says something about it, like "one server is enough at the dinner rush", we test that claim on this code.
 
 ## What you need
 

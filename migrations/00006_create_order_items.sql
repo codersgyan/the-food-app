@@ -1,7 +1,7 @@
 -- +goose Up
 -- One row for each dish in each order.
 --
--- No primary key, as in the course's data model. A primary key on
+-- No primary key, as in the path's data model. A primary key on
 -- (order_id, dish_id) would also index order_id, and the indexes lesson adds
 -- that index on its own. The server makes sure a dish appears only once in
 -- an order.

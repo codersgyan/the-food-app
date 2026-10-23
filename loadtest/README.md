@@ -1,6 +1,6 @@
 # Load test
 
-This folder tests the claims the course makes about our app, on real servers: that one server and one database handle the dinner rush, that the index keeps menus fast, and where the design stops being enough.
+This folder tests the claims the path makes about our app, on real servers: that one server and one database handle the dinner rush, that the index keeps menus fast, and where the design stops being enough.
 
 It runs on two machines in the same AWS zone: the API server, set up with [deploy/README.md](../deploy/README.md), and a separate test runner that sends the traffic. The test runner is a different machine, so the tool that sends the load never competes with the server for CPU.
 
