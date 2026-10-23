@@ -1,4 +1,4 @@
-.PHONY: db db-down migrate migrate-down run seed seed-big test
+.PHONY: db db-down migrate migrate-down run seed seed-big test proxy
 
 # Start Postgres and wait until it accepts connections.
 db:
@@ -31,3 +31,7 @@ test:
 # The dataset from the indexes lesson: 20,000 restaurants, 100 dishes each.
 seed-big:
 	go run ./cmd/seed -restaurants 20000 -dishes 100
+
+# Start nginx in front of the API server, on localhost:8000.
+proxy:
+	docker compose --profile proxy up -d nginx

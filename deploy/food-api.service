@@ -1,0 +1,17 @@
+# Runs the API server on a Linux machine and restarts it if it stops.
+# Install it as /etc/systemd/system/food-api.service.
+[Unit]
+Description=The food app's API server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+# The settings from the README's table, like DATABASE_URL and JWT_SECRET.
+EnvironmentFile=/etc/food-api.env
+ExecStart=/usr/local/bin/food-api
+Restart=on-failure
+# Run as a throwaway user with no rights on the machine.
+DynamicUser=yes
+
+[Install]
+WantedBy=multi-user.target

@@ -52,6 +52,14 @@ The requirements lesson shows the webhook's body as `{ "order_id": 9001, "status
 { "order_id": 9001, "payment_id": "pay_29QQoUBi66xm2f", "status": "captured" }
 ```
 
+## What does the reverse proxy do?
+
+Our nginx config follows the reverse proxy lesson: HTTPS on port 443, gzip for JSON, and the API server on port 8080 of the same machine. Two things differ from the lesson's last config.
+
+The lesson sends only `/v1/` to the API server. But the payment provider's webhook is `/payments/webhook`, so with that config, the provider's requests would never reach us. Our config sends `/payments/` to the API server too.
+
+The lesson also raises the size limit to 5 MB, for photos of dishes, and serves a restaurant dashboard from `/dashboard/`. Our app has no photos and no dashboard yet, so we left both out. nginx's default limit of 1 MB is plenty for our requests.
+
 ## What happens to an order's status?
 
 An order moves through `pending → paying → paid → accepted → ready`. Every move is one SQL statement with the old status in its WHERE, like this:

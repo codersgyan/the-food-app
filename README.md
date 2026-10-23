@@ -128,6 +128,22 @@ npx @usebruno/cli run -r
 
 Run the server with `FAKEPAY_DELAY=0s make run` for this, so each order is paid before the kitchen tries to accept it.
 
+## Put nginx in front of it
+
+In the reverse proxy lesson, we put nginx in front of our API server. You can run the same thing on your laptop:
+
+```sh
+make proxy
+```
+
+nginx listens on localhost:8000 and passes requests to the server from `make run`. Ask it for a menu with compression on, and you'll see the `Content-Encoding: gzip` header that nginx added:
+
+```sh
+curl -sI -H 'Accept-Encoding: gzip' localhost:8000/v1/restaurants/1/menu
+```
+
+The config is in `deploy/nginx/local.conf`. The one for the real server, with HTTPS, is `deploy/nginx/food-api.sys0.in.conf`, and [deploy/README.md](deploy/README.md) has the steps to run the app at `https://food-api.sys0.in`.
+
 ## Every request
 
 Here's every request, as we designed them in the API lesson. The tablet's orders list was added later; [DECISIONS.md](DECISIONS.md) says why.
