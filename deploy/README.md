@@ -2,9 +2,9 @@
 
 These are the steps to run the app on one Linux server, behind nginx, at `https://food-api.sys0.in`. It's the design from the reverse proxy lesson: nginx answers HTTPS on port 443 and passes each request to our API server on port 8080 of the same machine.
 
-The commands are for Ubuntu 24.04. You need a server with a public IP address, and Postgres running somewhere the server can reach.
+Our API server and Postgres run in Docker, with `compose.prod.yaml`. nginx runs on the server itself, installed with apt, because then certbot can renew its certificate and reload it without any extra setup. The nginx in `compose.yaml` (`make proxy`) is only for trying the proxy on your laptop.
 
-On the server, nginx is installed with apt and runs on its own, not in Docker. The nginx in `compose.yaml` (`make proxy`) is only for trying the proxy on your laptop, with no domain and no certificate.
+The commands are for Ubuntu 24.04, on a server with a public IP address.
 
 ## 1. Point the domain at the server
 
@@ -14,70 +14,48 @@ Add a DNS `A` record for `food-api.sys0.in` with the server's IP address. Check 
 dig +short food-api.sys0.in
 ```
 
-## 2. Get the code and the API server onto the server
+## 2. Install Docker and get the code
 
-On the server, clone the repo. The config files in `deploy/` come from here, and every command from now on runs inside this folder on the server, unless it says "on your laptop":
+Install Docker and its compose plugin, then clone the repo. Every command from now on runs inside this folder on the server:
 
 ```sh
+sudo apt install docker.io docker-compose-v2
 git clone https://github.com/codersgyan/the-food-app.git
 cd the-food-app
 ```
 
-On your laptop, build a Linux binary and copy it to the server:
+## 3. Make the settings file
+
+The settings live in `/etc/food-api.env`, outside the repo, so they never end up in git. On a server, it needs only three lines: the two secrets, and a password for Postgres. Never reuse the values from `.env.example`, because they're in a public repo. This makes new random ones:
 
 ```sh
-GOOS=linux GOARCH=amd64 go build -o food-api ./cmd/api
-scp food-api you@food-api.sys0.in:/tmp/
+sudo tee /etc/food-api.env > /dev/null <<EOF
+JWT_SECRET=$(openssl rand -hex 32)
+PAYMENT_WEBHOOK_SECRET=$(openssl rand -hex 32)
+POSTGRES_PASSWORD=$(openssl rand -hex 16)
+EOF
+sudo chmod 600 /etc/food-api.env
 ```
 
-On the server:
+`chmod 600` makes the file readable only by root, because it holds the secrets. You can add any other setting from `.env.example` to it, like `FAKEPAY_DELAY`. Don't set `ADDR` or `DATABASE_URL`: `compose.prod.yaml` sets them for the containers.
+
+## 4. Start the API server and Postgres
 
 ```sh
-sudo install /tmp/food-api /usr/local/bin/food-api
+sudo docker compose -f compose.prod.yaml --env-file /etc/food-api.env up -d --build
 ```
 
-## 3. Give it its settings
+This builds our image from the `Dockerfile`, and starts Postgres and then the API server. Both restart by themselves if they stop, and when the server reboots.
 
-The server reads its settings from `/etc/food-api.env`. It's the same `KEY=value` format as `.env` on your laptop, and systemd loads it when it starts the server. We start from `.env.example`.
-
-Make two new secrets. Never reuse the values from `.env.example`: they're in a public repo.
+Then create the tables, and add the sample data. `run --rm` starts a one-off container from the same image, runs the program, and removes the container:
 
 ```sh
-openssl rand -hex 32   # for JWT_SECRET
-openssl rand -hex 32   # for PAYMENT_WEBHOOK_SECRET
-```
-
-Then install the file, and make it readable only by root, because it holds the secrets:
-
-```sh
-sudo install -m 600 .env.example /etc/food-api.env
-sudo nano /etc/food-api.env
-```
-
-Put the two new secrets in, and set these lines too. `ADDR=127.0.0.1:8080` makes the server listen only inside the machine, so every request has to go through nginx:
-
-```sh
-JWT_SECRET=<the first secret>
-PAYMENT_WEBHOOK_SECRET=<the second secret>
-ADDR=127.0.0.1:8080
-DATABASE_URL=postgres://food:…@…:5432/food
-FAKEPAY_WEBHOOK_URL=http://127.0.0.1:8080/payments/webhook
-```
-
-On your laptop, create the tables, pointing at the server's database:
-
-```sh
-DATABASE_URL=postgres://food:…@…:5432/food make migrate seed
-```
-
-## 4. Start the API server
-
-```sh
-sudo cp deploy/food-api.service /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now food-api
+sudo docker compose -f compose.prod.yaml --env-file /etc/food-api.env run --rm api migrate up
+sudo docker compose -f compose.prod.yaml --env-file /etc/food-api.env run --rm api seed
 curl -s 127.0.0.1:8080/v1/restaurants/1/menu
 ```
+
+The API server is published only on `127.0.0.1:8080`, so nginx on this machine can reach it, and the internet can't. This is important, because ports that Docker publishes on every address skip the ufw firewall. So `"8080:8080"` would open our API server to the whole internet, even with ufw on. Postgres isn't published at all, so only the API container can reach it.
 
 ## 5. Get a certificate, then start nginx
 
@@ -133,3 +111,15 @@ curl -s -o /dev/null -w '%{http_code}\n' http://food-api.sys0.in:8080/v1/restaur
 ```
 
 The first one returns the menu, and the second one shows that nginx compressed it. The last one has to fail: port 8080 is closed to the internet.
+
+## Updating to a new version
+
+On the server, get the new code, rebuild the image, and apply any new migrations:
+
+```sh
+git pull
+sudo docker compose -f compose.prod.yaml --env-file /etc/food-api.env up -d --build
+sudo docker compose -f compose.prod.yaml --env-file /etc/food-api.env run --rm api migrate up
+```
+
+The data stays in the `pgdata` volume, so rebuilding doesn't touch it. Don't run `seed` again, because it empties every table.

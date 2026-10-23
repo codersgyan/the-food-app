@@ -1,0 +1,9 @@
+# Only the Go code goes into the image.
+.git
+.github
+.env
+bin
+bruno
+deploy
+food-api
+*.md
