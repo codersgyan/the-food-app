@@ -13,10 +13,16 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
+	"github.com/codersgyan/the-food-app/internal/auth"
 	"github.com/codersgyan/the-food-app/internal/fake"
 	"github.com/codersgyan/the-food-app/internal/handler"
 	"github.com/codersgyan/the-food-app/internal/service"
+	"github.com/codersgyan/the-food-app/internal/store"
 )
+
+// A login lasts 30 days. Tokens can't be cancelled early, so keep this short
+// enough that a stolen phone's token doesn't work forever.
+const tokenTTL = 30 * 24 * time.Hour
 
 func main() {
 	if err := run(); err != nil {
@@ -45,7 +51,9 @@ func run() error {
 	}
 
 	svc := service.New(service.Deps{
-		OTP: &fake.OTP{Delay: cfg.otpDelay},
+		Store:  store.New(pool),
+		OTP:    &fake.OTP{Delay: cfg.otpDelay},
+		Tokens: auth.NewTokens(cfg.jwtSecret, tokenTTL),
 	})
 
 	srv := &http.Server{

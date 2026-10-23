@@ -18,6 +18,7 @@ func New(svc *service.Services) http.Handler {
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /v1/login", h.login)
+	mux.HandleFunc("POST /v1/login/verify", h.verifyLogin)
 
 	return logRequests(recoverPanics(mux))
 }

@@ -11,6 +11,7 @@ import (
 type config struct {
 	addr        string
 	databaseURL string
+	jwtSecret   string
 	otpDelay    fake.Delay
 }
 
@@ -18,6 +19,7 @@ func loadConfig() (config, error) {
 	cfg := config{
 		addr:        env("ADDR", ":8080"),
 		databaseURL: env("DATABASE_URL", "postgres://food:food@localhost:5440/food?sslmode=disable"),
+		jwtSecret:   env("JWT_SECRET", "dev-only-jwt-secret"),
 	}
 	var err error
 	if cfg.otpDelay, err = fake.ParseDelay(env("FAKEOTP_DELAY", "200ms-500ms")); err != nil {

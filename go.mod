@@ -5,6 +5,7 @@ go 1.27.0
 toolchain go1.27.3
 
 require (
+	github.com/golang-jwt/jwt/v5 v5.3.1
 	github.com/jackc/pgx/v5 v5.11.0
 	github.com/pressly/goose/v3 v3.29.0
 	github.com/stretchr/testify v1.12.1

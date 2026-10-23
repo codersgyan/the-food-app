@@ -11,13 +11,16 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/require"
 
+	"github.com/codersgyan/the-food-app/internal/auth"
 	"github.com/codersgyan/the-food-app/internal/fake"
 	"github.com/codersgyan/the-food-app/internal/handler"
 	"github.com/codersgyan/the-food-app/internal/service"
+	"github.com/codersgyan/the-food-app/internal/store"
 	"github.com/codersgyan/the-food-app/migrations"
 )
 
@@ -40,9 +43,10 @@ func TestMain(m *testing.M) {
 
 // app is the whole server, running against an empty test database.
 type app struct {
-	t    *testing.T
-	srv  *httptest.Server
-	pool *pgxpool.Pool
+	t      *testing.T
+	srv    *httptest.Server
+	pool   *pgxpool.Pool
+	tokens *auth.Tokens
 }
 
 func newApp(t *testing.T) *app {
@@ -58,13 +62,16 @@ func newApp(t *testing.T) *app {
 	_, err = pool.Exec(ctx, `TRUNCATE order_items, orders, dishes, addresses, users, restaurants`)
 	require.NoError(t, err)
 
+	tokens := auth.NewTokens("test-secret", time.Hour)
 	svc := service.New(service.Deps{
-		OTP: &fake.OTP{},
+		Store:  store.New(pool),
+		OTP:    &fake.OTP{},
+		Tokens: tokens,
 	})
 	srv := httptest.NewServer(handler.New(svc))
 	t.Cleanup(srv.Close)
 
-	return &app{t: t, srv: srv, pool: pool}
+	return &app{t: t, srv: srv, pool: pool, tokens: tokens}
 }
 
 type response struct {
@@ -108,4 +115,16 @@ func (r response) errorMessage() string {
 	}
 	r.decode(&e)
 	return e.Error
+}
+
+// login logs phone in through the API and returns its token.
+func (a *app) login(phone string) string {
+	a.t.Helper()
+	res := a.do("POST", "/v1/login/verify", "", map[string]string{"phone": phone, "code": fake.OTPCode})
+	require.Equal(a.t, http.StatusOK, res.status, "body: %s", res.body)
+	var out struct {
+		Token string `json:"token"`
+	}
+	res.decode(&out)
+	return out.Token
 }

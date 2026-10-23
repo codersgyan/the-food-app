@@ -1,8 +1,15 @@
 package service
 
+import (
+	"github.com/codersgyan/the-food-app/internal/auth"
+	"github.com/codersgyan/the-food-app/internal/store"
+)
+
 // Deps is everything the services need from outside.
 type Deps struct {
-	OTP OTPSender
+	Store  *store.Store
+	OTP    OTPSender
+	Tokens *auth.Tokens
 }
 
 // Services holds one service for each part of the app.
@@ -12,6 +19,6 @@ type Services struct {
 
 func New(d Deps) *Services {
 	return &Services{
-		Auth: &AuthService{otp: d.OTP},
+		Auth: &AuthService{store: d.Store, otp: d.OTP, tokens: d.Tokens},
 	}
 }
