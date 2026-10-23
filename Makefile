@@ -1,4 +1,4 @@
-.PHONY: db db-down migrate migrate-down run
+.PHONY: db db-down migrate migrate-down run seed
 
 # Start Postgres and wait until it accepts connections.
 db:
@@ -19,3 +19,7 @@ migrate-down:
 # Run the API server on :8080.
 run:
 	go run ./cmd/api
+
+# Empty the database and fill it with sample restaurants, dishes and users.
+seed:
+	go run ./cmd/seed
