@@ -1,12 +1,23 @@
 #!/usr/bin/env bash
 # run.sh runs one load test from your laptop, on two servers: the API server,
-# and a separate test runner that sends the traffic. It runs one step for each
-# multiplier, and stops early when the server can't keep up. Everything it
-# measures goes into results/<date>-<name>/.
+# and a separate test runner that sends the traffic. Everything it measures
+# goes into results/<date>-<name>/.
 #
 #     export API_HOST=3.111.144.254 RUNNER_HOST=3.108.191.183 SSH_KEY=~/.ssh/pg-load-test.pem
 #     ./run.sh customers-only "1 2 3 5 10"
 #     TABLETS=20000 TABLET_INTERVAL=10 ./run.sh with-tablets "1 2 3 5 10"
+#
+# It runs one step for each multiplier, and stops at the first step the server
+# doesn't keep up with. A step passes when, for the whole step, menus stay
+# under 1 second at p99 (the requirement from the lessons), under 1% of
+# requests fail, and k6 drops under 1% of the visits because the server
+# couldn't take them in time.
+#
+# To find the limit more exactly, give it a multiplier that passed and one
+# that failed, with SEARCH=1. It tries the middle, keeps the half the limit is
+# in, and stops when the two are 0.1 apart:
+#
+#     SEARCH=1 ./run.sh customers-only-limit "1 2"
 #
 # The runner needs k6 and the API server needs the app from deploy/README.md,
 # seeded with: run --rm api seed -restaurants 20000 -dishes 100 -customers 10000
@@ -73,10 +84,14 @@ stop_monitors() {
 trap stop_monitors EXIT
 sleep 10 # a few quiet samples before the first step
 
-echo "multiplier,start_utc,end_utc,nginx_errors" > "$OUT/steps.csv"
-for M in $MULTS; do
+echo "multiplier,start_utc,end_utc,menu_p99_ms,failed_pct,dropped_pct,nginx_errors,passed" > "$OUT/steps.csv"
+
+# run_step runs one step at multiplier $1, and sets PASSED to 1 or 0.
+run_step() {
+  local M=$1
   echo "=== step ${M}x"
   pg_stats "$OUT/pg-${M}x-before.json"
+  local LOG_BEFORE START END NGINX_ERRORS P99 FAILED DROPPED
   LOG_BEFORE=$(api 'sudo wc -l < /var/log/nginx/error.log')
   START=$(date -u +%FT%TZ)
   runner "cd /tmp/loadtest && ulimit -n 65535 && k6 run -q \
@@ -87,18 +102,33 @@ for M in $MULTS; do
   pg_stats "$OUT/pg-${M}x-after.json"
   scp -q "${SSH_OPTS[@]}" "ubuntu@$RUNNER_HOST:/tmp/loadtest/k6-${M}x.json" "$OUT/"
   NGINX_ERRORS=$(( $(api 'sudo wc -l < /var/log/nginx/error.log') - LOG_BEFORE ))
-  echo "$M,$START,$END,$NGINX_ERRORS" >> "$OUT/steps.csv"
-  echo "nginx wrote $NGINX_ERRORS lines to its error log in this step"
 
-  # Stop when menus are slower than the requirement, or too many requests fail.
-  P99=$(jq '.metrics["http_req_duration{name:menu}"].values["p(99)"]' "$OUT/k6-${M}x.json")
-  FAILED=$(jq '.metrics.http_req_failed.values.rate' "$OUT/k6-${M}x.json")
-  if jq -en "$P99 > 1000 or $FAILED > 0.01" > /dev/null; then
-    echo "stopping: menu p99 ${P99} ms, failed $(jq -n "$FAILED * 100") %"
-    break
-  fi
-  sleep "$REST"
-done
+  P99=$(jq '.metrics["http_req_duration{name:menu}"].values["p(99)"] // 0 | round' "$OUT/k6-${M}x.json")
+  FAILED=$(jq '.metrics.http_req_failed.values.rate * 100 | . * 100 | round / 100' "$OUT/k6-${M}x.json")
+  DROPPED=$(jq '(.metrics.dropped_iterations.values.count // 0) as $d
+    | (.metrics.iterations.values.count // 0) as $i
+    | if $d + $i == 0 then 0 else ($d / ($d + $i) * 100 | . * 100 | round / 100) end' "$OUT/k6-${M}x.json")
+  if jq -en "$P99 < 1000 and $FAILED < 1 and $DROPPED < 1" > /dev/null; then PASSED=1; else PASSED=0; fi
+  echo "$M,$START,$END,$P99,$FAILED,$DROPPED,$NGINX_ERRORS,$PASSED" >> "$OUT/steps.csv"
+  echo "menu p99 ${P99} ms, failed ${FAILED}%, dropped ${DROPPED}%, nginx errors $NGINX_ERRORS: $([ "$PASSED" = 1 ] && echo passed || echo FAILED)"
+}
+
+if [ "${SEARCH:-0}" = 1 ]; then
+  read -r LOW HIGH <<< "$MULTS"
+  while jq -en "$HIGH - $LOW > 0.1" > /dev/null; do
+    MID=$(jq -n "($LOW + $HIGH) / 2 * 100 | round / 100")
+    run_step "$MID"
+    if [ "$PASSED" = 1 ]; then LOW=$MID; else HIGH=$MID; fi
+    sleep "$REST"
+  done
+  echo "the limit is between ${LOW}x (passed) and ${HIGH}x (failed)" | tee "$OUT/limit.txt"
+else
+  for M in $MULTS; do
+    run_step "$M"
+    [ "$PASSED" = 1 ] || { echo "stopping: the server didn't keep up at ${M}x"; break; }
+    sleep "$REST"
+  done
+fi
 
 api 'cd the-food-app && bash /tmp/collect-env.sh' > "$OUT/env-after.txt"
 echo "results in $OUT"
