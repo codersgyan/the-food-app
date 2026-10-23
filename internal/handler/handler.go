@@ -5,20 +5,23 @@ package handler
 import (
 	"net/http"
 
+	"github.com/codersgyan/the-food-app/internal/auth"
 	"github.com/codersgyan/the-food-app/internal/service"
 )
 
 type handler struct {
-	svc *service.Services
+	svc    *service.Services
+	tokens *auth.Tokens
 }
 
 // New returns the router with every route of the API.
-func New(svc *service.Services) http.Handler {
-	h := &handler{svc: svc}
+func New(svc *service.Services, tokens *auth.Tokens) http.Handler {
+	h := &handler{svc: svc, tokens: tokens}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /v1/login", h.login)
 	mux.HandleFunc("POST /v1/login/verify", h.verifyLogin)
+	mux.HandleFunc("GET /v1/me", h.customer(h.me))
 
 	return logRequests(recoverPanics(mux))
 }

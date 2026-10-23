@@ -14,11 +14,13 @@ type Deps struct {
 
 // Services holds one service for each part of the app.
 type Services struct {
-	Auth *AuthService
+	Auth  *AuthService
+	Users *UserService
 }
 
 func New(d Deps) *Services {
 	return &Services{
-		Auth: &AuthService{store: d.Store, otp: d.OTP, tokens: d.Tokens},
+		Auth:  &AuthService{store: d.Store, otp: d.OTP, tokens: d.Tokens},
+		Users: &UserService{store: d.Store},
 	}
 }

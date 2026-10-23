@@ -50,15 +50,16 @@ func run() error {
 		return err
 	}
 
+	tokens := auth.NewTokens(cfg.jwtSecret, tokenTTL)
 	svc := service.New(service.Deps{
 		Store:  store.New(pool),
 		OTP:    &fake.OTP{Delay: cfg.otpDelay},
-		Tokens: auth.NewTokens(cfg.jwtSecret, tokenTTL),
+		Tokens: tokens,
 	})
 
 	srv := &http.Server{
 		Addr:              cfg.addr,
-		Handler:           handler.New(svc),
+		Handler:           handler.New(svc, tokens),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,

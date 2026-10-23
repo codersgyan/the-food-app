@@ -68,7 +68,7 @@ func newApp(t *testing.T) *app {
 		OTP:    &fake.OTP{},
 		Tokens: tokens,
 	})
-	srv := httptest.NewServer(handler.New(svc))
+	srv := httptest.NewServer(handler.New(svc, tokens))
 	t.Cleanup(srv.Close)
 
 	return &app{t: t, srv: srv, pool: pool, tokens: tokens}
@@ -127,4 +127,13 @@ func (a *app) login(phone string) string {
 	}
 	res.decode(&out)
 	return out.Token
+}
+
+// customer logs in a new customer and returns their token and user ID.
+func (a *app) customer(phone string) (string, int64) {
+	a.t.Helper()
+	token := a.login(phone)
+	c, err := a.tokens.Parse(token)
+	require.NoError(a.t, err)
+	return token, c.UserID
 }

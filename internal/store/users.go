@@ -24,3 +24,11 @@ func (s *Store) UserByPhoneOrNew(ctx context.Context, phone string) (User, error
 	).Scan(&u.ID, &u.Name, &u.Phone, &u.Role, &u.RestaurantID)
 	return u, err
 }
+
+func (s *Store) User(ctx context.Context, id int64) (User, error) {
+	var u User
+	err := s.db.QueryRow(ctx,
+		`SELECT id, name, phone, role, restaurant_id FROM users WHERE id = $1`, id,
+	).Scan(&u.ID, &u.Name, &u.Phone, &u.Role, &u.RestaurantID)
+	return u, notFound(err)
+}

@@ -24,3 +24,13 @@ func (a *app) staff(phone string, restaurantID int64) {
 	)
 	require.NoError(a.t, err)
 }
+
+func (a *app) address(userID int64, address string) int64 {
+	a.t.Helper()
+	var id int64
+	err := a.pool.QueryRow(a.t.Context(),
+		`INSERT INTO addresses (user_id, address) VALUES ($1, $2) RETURNING id`, userID, address,
+	).Scan(&id)
+	require.NoError(a.t, err)
+	return id
+}
