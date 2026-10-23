@@ -41,3 +41,17 @@ func scanDishes(rows pgx.Rows) ([]Dish, error) {
 	}
 	return list, rows.Err()
 }
+
+// RestaurantDishes returns the dishes with these IDs that belong to the restaurant.
+func (s *Store) RestaurantDishes(ctx context.Context, restaurantID int64, ids []int64) ([]Dish, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT id, restaurant_id, name, price, sold_out
+		FROM dishes
+		WHERE restaurant_id = $1 AND id = ANY($2)`,
+		restaurantID, ids,
+	)
+	if err != nil {
+		return nil, err
+	}
+	return scanDishes(rows)
+}

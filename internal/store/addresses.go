@@ -35,3 +35,12 @@ func (s *Store) AddAddress(ctx context.Context, userID int64, address string) (i
 	).Scan(&id)
 	return id, err
 }
+
+// Address returns one of the user's saved addresses.
+func (s *Store) Address(ctx context.Context, id, userID int64) (Address, error) {
+	var a Address
+	err := s.db.QueryRow(ctx,
+		`SELECT id, address FROM addresses WHERE id = $1 AND user_id = $2`, id, userID,
+	).Scan(&a.ID, &a.Address)
+	return a, notFound(err)
+}

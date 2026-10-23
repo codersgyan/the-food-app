@@ -19,6 +19,7 @@ type Services struct {
 	Auth        *AuthService
 	Users       *UserService
 	Restaurants *RestaurantService
+	Orders      *OrderService
 }
 
 func New(d Deps) *Services {
@@ -26,5 +27,6 @@ func New(d Deps) *Services {
 		Auth:        &AuthService{store: d.Store, otp: d.OTP, tokens: d.Tokens},
 		Users:       &UserService{store: d.Store},
 		Restaurants: &RestaurantService{store: d.Store, nearRadiusKm: d.NearRadiusKm},
+		Orders:      &OrderService{store: d.Store},
 	}
 }
