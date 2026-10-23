@@ -38,7 +38,9 @@ type Payments struct {
 	Client        *http.Client
 }
 
-// Webhook is what the provider sends to our server.
+// Webhook is what the provider sends to our server. The requirements lesson
+// shows only order_id and status. Real providers also send their payment ID,
+// and our server saves it in the order's payment_id column.
 type Webhook struct {
 	OrderID   int64  `json:"order_id"`
 	PaymentID string `json:"payment_id"`

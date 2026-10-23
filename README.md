@@ -146,7 +146,7 @@ The config is in `deploy/nginx/local.conf`. The one for the real server, with HT
 
 ## Every request
 
-Here's every request, as we designed them in the API lesson. The tablet's orders list was added later; [DECISIONS.md](DECISIONS.md) says why.
+Here's every request, as we designed them in the API lesson.
 
 | Request | Who sends it | What it does |
 | --- | --- | --- |
@@ -231,5 +231,3 @@ internal/fake/      the fake OTP service and payment provider
 ```
 
 A request goes from the handler to a service to the store, and never the other way. Handlers know HTTP but no SQL. Services know the rules but not HTTP. The store knows SQL but no rules. So if you want to find the `WHERE status = 'pending'` that stops a double charge, it's in `internal/store/orders.go`, and the rule that uses it is in `internal/service/payments.go`.
-
-The few places where the code had to decide something the lessons didn't are in [DECISIONS.md](DECISIONS.md).
