@@ -149,6 +149,8 @@ The config is in `deploy/nginx/local.conf`. The one for the real server, with HT
 
 [deploy/README.md](deploy/README.md) has every step to run the app on one Ubuntu server at `https://food-api.sys0.in`: the API server and Postgres in Docker, with nginx in front of them on the server itself, and a free HTTPS certificate from Let's Encrypt that renews itself.
 
+[infra/README.md](infra/README.md) does all of it with one command, `make cloud-up`, using Terraform: it creates the server on AWS, and a second one to run load tests from. `make cloud-down` deletes both.
+
 ## Every request
 
 Here's every request, as we designed them in the API lesson.

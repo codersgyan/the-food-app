@@ -25,7 +25,9 @@ HERE=$(cd "$(dirname "$0")" && pwd)
 OUT="$HERE/results/$(date -u +%Y-%m-%d)-$NAME"
 mkdir -p "$OUT"
 
-SSH_OPTS=(-i "$SSH_KEY" -o ServerAliveInterval=30 -o StrictHostKeyChecking=accept-new)
+# KNOWN_HOSTS lets make cloud-loadtest keep the servers' host keys in infra/secrets/.
+SSH_OPTS=(-i "$SSH_KEY" -o ServerAliveInterval=30 -o StrictHostKeyChecking=accept-new
+  -o UserKnownHostsFile="${KNOWN_HOSTS:-$HOME/.ssh/known_hosts}")
 api() { ssh "${SSH_OPTS[@]}" "ubuntu@$API_HOST" "$@"; }
 runner() { ssh "${SSH_OPTS[@]}" "ubuntu@$RUNNER_HOST" "$@"; }
 COMPOSE='cd the-food-app && sudo docker compose -f compose.prod.yaml --env-file /etc/food-api.env'

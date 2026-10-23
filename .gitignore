@@ -5,6 +5,13 @@
 # Local settings
 .env
 
+# Terraform: its state, downloaded providers, and the SSH key and certificate
+# backup in infra/secrets/. The lock file (.terraform.lock.hcl) is committed.
+infra/.terraform/
+infra/*.tfstate
+infra/*.tfstate.*
+infra/secrets/
+
 # Editors
 .idea/
 .vscode/
