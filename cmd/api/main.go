@@ -32,10 +32,7 @@ func main() {
 }
 
 func run() error {
-	cfg, err := loadConfig()
-	if err != nil {
-		return err
-	}
+	cfg := mustLoadConfig()
 
 	// Ctrl+C or a SIGTERM from Docker cancels ctx, and we shut down cleanly.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)

@@ -27,46 +27,57 @@ type config struct {
 	payDuplicateRate     float64
 }
 
-func loadConfig() (config, error) {
-	cfg := config{
-		addr:        env("ADDR", ":8080"),
-		databaseURL: env("DATABASE_URL", "postgres://food:food@localhost:5440/food?sslmode=disable"),
-		jwtSecret:   os.Getenv("JWT_SECRET"),
+// mustLoadConfig reads the settings, and panics if one is missing or wrong:
+// the server can't do anything useful without them.
+func mustLoadConfig() config {
+	return config{
+		addr:         env("ADDR", ":8080"),
+		databaseURL:  env("DATABASE_URL", "postgres://food:food@localhost:5440/food?sslmode=disable"),
+		jwtSecret:    mustEnv("JWT_SECRET"),
+		nearRadiusKm: mustFloat("NEAR_RADIUS_KM", "7"),
 
-		paymentWebhookSecret: os.Getenv("PAYMENT_WEBHOOK_SECRET"),
+		otpDelay: mustDelay("FAKEOTP_DELAY", "200ms-500ms"),
+
+		paymentWebhookSecret: mustEnv("PAYMENT_WEBHOOK_SECRET"),
+		payDelay:             mustDelay("FAKEPAY_DELAY", "1s-2s"),
 		payWebhookURL:        env("FAKEPAY_WEBHOOK_URL", "http://localhost:8080/payments/webhook"),
+		payFailRate:          mustRate("FAKEPAY_FAIL_RATE"),
+		payDuplicateRate:     mustRate("FAKEPAY_DUPLICATE_RATE"),
 	}
-	for key, v := range map[string]string{"JWT_SECRET": cfg.jwtSecret, "PAYMENT_WEBHOOK_SECRET": cfg.paymentWebhookSecret} {
-		if v == "" {
-			return config{}, fmt.Errorf("%s is not set: on your laptop, run cp .env.example .env", key)
-		}
-	}
-	var err error
-	if cfg.otpDelay, err = fake.ParseDelay(env("FAKEOTP_DELAY", "200ms-500ms")); err != nil {
-		return config{}, err
-	}
-	if cfg.payDelay, err = fake.ParseDelay(env("FAKEPAY_DELAY", "1s-2s")); err != nil {
-		return config{}, err
-	}
-	if cfg.payFailRate, err = rate("FAKEPAY_FAIL_RATE"); err != nil {
-		return config{}, err
-	}
-	if cfg.payDuplicateRate, err = rate("FAKEPAY_DUPLICATE_RATE"); err != nil {
-		return config{}, err
-	}
-	if cfg.nearRadiusKm, err = strconv.ParseFloat(env("NEAR_RADIUS_KM", "7"), 64); err != nil {
-		return config{}, fmt.Errorf("NEAR_RADIUS_KM: %w", err)
-	}
-	return cfg, nil
 }
 
-// rate reads a share from 0 to 1. It's 0 when the variable isn't set.
-func rate(key string) (float64, error) {
-	r, err := strconv.ParseFloat(env(key, "0"), 64)
-	if err != nil || r < 0 || r > 1 {
-		return 0, fmt.Errorf("%s must be a number from 0 to 1", key)
+// mustEnv reads a setting that has no default, like a secret.
+func mustEnv(key string) string {
+	v := os.Getenv(key)
+	if v == "" {
+		panic(key + " is not set: on your laptop, run cp .env.example .env")
 	}
-	return r, nil
+	return v
+}
+
+func mustFloat(key, fallback string) float64 {
+	f, err := strconv.ParseFloat(env(key, fallback), 64)
+	if err != nil {
+		panic(fmt.Sprintf("%s must be a number: %v", key, err))
+	}
+	return f
+}
+
+func mustDelay(key, fallback string) fake.Delay {
+	d, err := fake.ParseDelay(env(key, fallback))
+	if err != nil {
+		panic(fmt.Sprintf("%s: %v", key, err))
+	}
+	return d
+}
+
+// mustRate reads a share from 0 to 1. It's 0 when the variable isn't set.
+func mustRate(key string) float64 {
+	r := mustFloat(key, "0")
+	if r < 0 || r > 1 {
+		panic(key + " must be a number from 0 to 1")
+	}
+	return r
 }
 
 func env(key, fallback string) string {
