@@ -6,6 +6,8 @@ Our API server and Postgres run in Docker, with `compose.prod.yaml`. nginx runs 
 
 We tested these steps on Ubuntu 26.04 LTS, on an AWS `m7g.large` (2 ARM vCPUs, 8 GB of memory) in Mumbai. They work on Ubuntu 24.04 too. Give the server a disk of at least 20 GB: the first build takes about 3 GB for Docker's images and its build cache, which fills three quarters of the default 8 GB disk on AWS.
 
+`deploy/setup.sh` runs steps 2 to 5 for you, in the same order, once step 1 is done: `DOMAIN=food-api.sys0.in EMAIL=you@example.com ./deploy/setup.sh`. The `infra/` folder goes one step further, and creates the servers too. The steps below are what both of them do, one command at a time.
+
 ## 1. Point the domain at the server, and open its ports
 
 Add a DNS `A` record for `food-api.sys0.in` with the server's IP address. Check it before going on:
@@ -102,6 +104,13 @@ sudo certbot certonly --nginx -d food-api.sys0.in \
 ```
 
 The first time, certbot asks for an email address, where Let's Encrypt warns you if a certificate is about to expire, and asks you to agree to the Let's Encrypt Subscriber Agreement. It saves the certificate in `/etc/letsencrypt/live/food-api.sys0.in/`, which is where our nginx config looks for it.
+
+Ubuntu's nginx accepts at most 768 connections per worker process. Each request through nginx uses two: one from the phone, and one to our API server. Our load test showed that runs out at about twice the dinner peak, and then nginx refuses new connections. So allow 4,096 connections per worker, and let each worker open enough files for them, because every connection is an open file:
+
+```sh
+sudo sed -i 's/worker_connections 768;/worker_connections 4096;/' /etc/nginx/nginx.conf
+sudo sed -i '/^worker_processes/a worker_rlimit_nofile 8192;' /etc/nginx/nginx.conf
+```
 
 Then install our config and reload nginx:
 
