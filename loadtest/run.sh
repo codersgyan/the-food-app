@@ -19,6 +19,11 @@
 #
 #     SEARCH=1 ./run.sh customers-only-limit "1 2"
 #
+# SEARCH=tablets does the same with the number of tablets, at MULT customers,
+# and stops when the two are 1,000 tablets apart:
+#
+#     SEARCH=tablets MULT=1 ./run.sh tablets-limit "0 20000"
+#
 # The runner needs k6 and the API server needs the app from deploy/README.md,
 # seeded with: run --rm api seed -restaurants 20000 -dishes 100 -customers 10000
 set -euo pipefail
@@ -84,32 +89,33 @@ stop_monitors() {
 trap stop_monitors EXIT
 sleep 10 # a few quiet samples before the first step
 
-echo "multiplier,start_utc,end_utc,menu_p99_ms,failed_pct,dropped_pct,nginx_errors,passed" > "$OUT/steps.csv"
+echo "multiplier,tablets,start_utc,end_utc,menu_p99_ms,failed_pct,dropped_pct,nginx_errors,passed" > "$OUT/steps.csv"
 
-# run_step runs one step at multiplier $1, and sets PASSED to 1 or 0.
+# run_step runs one step with multiplier $1 and $2 tablets, and sets PASSED to 1 or 0.
 run_step() {
-  local M=$1
-  echo "=== step ${M}x"
-  pg_stats "$OUT/pg-${M}x-before.json"
+  local M=$1 T=$2 S
+  S="${M}x-${T}t" # names this step's files
+  echo "=== step ${M}x, $T tablets"
+  pg_stats "$OUT/pg-$S-before.json"
   local LOG_BEFORE START END NGINX_ERRORS P99 FAILED DROPPED
   LOG_BEFORE=$(api 'sudo wc -l < /var/log/nginx/error.log')
   START=$(date -u +%FT%TZ)
   runner "cd /tmp/loadtest && ulimit -n 65535 && k6 run -q \
     -e BASE_URL=$BASE_URL -e MULT=$M -e DURATION=$DURATION \
-    -e TABLETS=$TABLETS -e TABLET_INTERVAL=$TABLET_INTERVAL \
-    -e TOKENS=tokens.json -e OUT=k6-${M}x.json shop.js" | tee "$OUT/k6-${M}x.txt" || true
+    -e TABLETS=$T -e TABLET_INTERVAL=$TABLET_INTERVAL \
+    -e TOKENS=tokens.json -e OUT=k6-$S.json shop.js" | tee "$OUT/k6-$S.txt" || true
   END=$(date -u +%FT%TZ)
-  pg_stats "$OUT/pg-${M}x-after.json"
-  scp -q "${SSH_OPTS[@]}" "ubuntu@$RUNNER_HOST:/tmp/loadtest/k6-${M}x.json" "$OUT/"
+  pg_stats "$OUT/pg-$S-after.json"
+  scp -q "${SSH_OPTS[@]}" "ubuntu@$RUNNER_HOST:/tmp/loadtest/k6-$S.json" "$OUT/"
   NGINX_ERRORS=$(( $(api 'sudo wc -l < /var/log/nginx/error.log') - LOG_BEFORE ))
 
-  P99=$(jq '.metrics["http_req_duration{name:menu}"].values["p(99)"] // 0 | round' "$OUT/k6-${M}x.json")
-  FAILED=$(jq '.metrics.http_req_failed.values.rate * 100 | . * 100 | round / 100' "$OUT/k6-${M}x.json")
+  P99=$(jq '.metrics["http_req_duration{name:menu}"].values["p(99)"] // 0 | round' "$OUT/k6-$S.json")
+  FAILED=$(jq '.metrics.http_req_failed.values.rate * 100 | . * 100 | round / 100' "$OUT/k6-$S.json")
   DROPPED=$(jq '(.metrics.dropped_iterations.values.count // 0) as $d
     | (.metrics.iterations.values.count // 0) as $i
-    | if $d + $i == 0 then 0 else ($d / ($d + $i) * 100 | . * 100 | round / 100) end' "$OUT/k6-${M}x.json")
+    | if $d + $i == 0 then 0 else ($d / ($d + $i) * 100 | . * 100 | round / 100) end' "$OUT/k6-$S.json")
   if jq -en "$P99 < 1000 and $FAILED < 1 and $DROPPED < 1" > /dev/null; then PASSED=1; else PASSED=0; fi
-  echo "$M,$START,$END,$P99,$FAILED,$DROPPED,$NGINX_ERRORS,$PASSED" >> "$OUT/steps.csv"
+  echo "$M,$T,$START,$END,$P99,$FAILED,$DROPPED,$NGINX_ERRORS,$PASSED" >> "$OUT/steps.csv"
   echo "menu p99 ${P99} ms, failed ${FAILED}%, dropped ${DROPPED}%, nginx errors $NGINX_ERRORS: $([ "$PASSED" = 1 ] && echo passed || echo FAILED)"
 }
 
@@ -117,14 +123,24 @@ if [ "${SEARCH:-0}" = 1 ]; then
   read -r LOW HIGH <<< "$MULTS"
   while jq -en "$HIGH - $LOW > 0.1" > /dev/null; do
     MID=$(jq -n "($LOW + $HIGH) / 2 * 100 | round / 100")
-    run_step "$MID"
+    run_step "$MID" "$TABLETS"
     if [ "$PASSED" = 1 ]; then LOW=$MID; else HIGH=$MID; fi
     sleep "$REST"
   done
-  echo "the limit is between ${LOW}x (passed) and ${HIGH}x (failed)" | tee "$OUT/limit.txt"
+  echo "with $TABLETS tablets, the limit is between ${LOW}x (passed) and ${HIGH}x (failed)" | tee "$OUT/limit.txt"
+elif [ "${SEARCH:-0}" = tablets ]; then
+  M=${MULT:?set MULT, the customers to keep steady while the tablets change}
+  read -r LOW HIGH <<< "$MULTS"
+  while [ $((HIGH - LOW)) -gt 1000 ]; do
+    MID=$(( (LOW + HIGH) / 2 / 100 * 100 ))
+    run_step "$M" "$MID"
+    if [ "$PASSED" = 1 ]; then LOW=$MID; else HIGH=$MID; fi
+    sleep "$REST"
+  done
+  echo "at ${M}x, with a poll every $TABLET_INTERVAL s, the limit is between $LOW tablets (passed) and $HIGH (failed)" | tee "$OUT/limit.txt"
 else
   for M in $MULTS; do
-    run_step "$M"
+    run_step "$M" "$TABLETS"
     [ "$PASSED" = 1 ] || { echo "stopping: the server didn't keep up at ${M}x"; break; }
     sleep "$REST"
   done

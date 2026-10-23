@@ -10,6 +10,7 @@
 
 import http from 'k6/http';
 import { check, sleep } from 'k6';
+import exec from 'k6/execution';
 import { SharedArray } from 'k6/data';
 import { Counter, Trend } from 'k6/metrics';
 
@@ -87,8 +88,9 @@ function auth(token) {
   return { Authorization: `Bearer ${token}` };
 }
 
-function req(method, path, body, token, name) {
+function req(method, path, body, token, name, expected) {
   const params = { headers: { ...JSON_HEADERS, ...(token ? auth(token) : {}) }, tags: { name } };
+  if (expected) params.responseCallback = http.expectedStatuses(...expected);
   return http.request(method, `${BASE_URL}${path}`, body === null ? null : JSON.stringify(body), params);
 }
 
@@ -174,12 +176,16 @@ export function customer() {
 }
 
 export function tablet() {
-  const t = pick(tablets);
+  // The tablets take turns, so each of the first TABLETS restaurants asks
+  // exactly once every TABLET_INTERVAL seconds, like one real tablet would.
+  const t = tablets[exec.scenario.iterationInTest % Math.min(TABLETS, tablets.length)];
   const res = req('GET', `/v1/restaurants/${t.restaurantId}/orders?status=paid`, null, t.token, 'tablet_poll');
   if (!check(res, { 'tablet_poll 200': (r) => r.status === 200 })) return;
   for (const o of res.json('orders')) {
     // Accept the order, and mark it ready. The test doesn't wait for the cooking.
-    const accept = req('POST', `/v1/orders/${o.id}/accept`, null, t.token, 'accept');
+    // 409 means the order was accepted already. That's the status guard
+    // doing its job, so it's not a failure.
+    const accept = req('POST', `/v1/orders/${o.id}/accept`, null, t.token, 'accept', [200, 409]);
     check(accept, { 'accept 200 or 409': (r) => r.status === 200 || r.status === 409 });
     if (accept.status !== 200) continue;
     const ready = req('POST', `/v1/orders/${o.id}/ready`, null, t.token, 'ready');

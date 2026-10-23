@@ -18,7 +18,7 @@ The traffic follows the numbers in the lessons. At the dinner peak, the app gets
 
 Between steps, the customer pauses for half a second to a second and a half, like a person reading the screen. That makes about 20 requests for every order, the number the lessons use, and about 340 requests a second at 1x.
 
-**Restaurant tablets.** With `TABLETS=20000`, every restaurant's tablet asks `GET /v1/restaurants/{id}/orders?status=paid` every `TABLET_INTERVAL` seconds. When it finds an order, it accepts it and marks it ready. The tablets don't grow with `MULT`: a tablet asks every few seconds however busy the restaurant is.
+**Restaurant tablets.** With `TABLETS=20000`, the tablets of the first 20,000 restaurants take turns asking `GET /v1/restaurants/{id}/orders?status=paid`, so each one asks once every `TABLET_INTERVAL` seconds. When it finds an order, it accepts it and marks it ready. The tablets don't grow with `MULT`: a tablet asks every few seconds however busy the restaurant is.
 
 Requests ask for gzip, like a phone does, so nginx compresses the responses.
 
@@ -70,6 +70,12 @@ To find the limit more exactly, give it one multiplier that passed and one that 
 
 ```sh
 SEARCH=1 ./run.sh customers-only-limit "1 2"
+```
+
+`SEARCH=tablets` does the same with the number of tablets, keeping the customers steady at `MULT`, and stops when the two are 1,000 tablets apart:
+
+```sh
+SEARCH=tablets MULT=1 ./run.sh tablets-limit "0 20000"
 ```
 
 The first run logs in 2,000 customers and all 20,000 tablets once, with `prepare.js`, and keeps their tokens on the test runner.
