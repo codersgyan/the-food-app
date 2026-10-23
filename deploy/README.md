@@ -4,15 +4,17 @@ These are the steps to run the app on one Linux server, behind nginx, at `https:
 
 Our API server and Postgres run in Docker, with `compose.prod.yaml`. nginx runs on the server itself, installed with apt, because then certbot can renew its certificate and reload it without any extra setup. The nginx in `compose.yaml` (`make proxy`) is only for trying the proxy on your laptop.
 
-The commands are for Ubuntu 24.04, on a server with a public IP address.
+We tested these steps on Ubuntu 26.04 LTS, on an AWS `m7g.large` (2 ARM vCPUs, 8 GB of memory) in Mumbai. They work on Ubuntu 24.04 too. Give the server a disk of at least 20 GB: the first build takes about 3 GB for Docker's images and its build cache, which fills three quarters of the default 8 GB disk on AWS.
 
-## 1. Point the domain at the server
+## 1. Point the domain at the server, and open its ports
 
 Add a DNS `A` record for `food-api.sys0.in` with the server's IP address. Check it before going on:
 
 ```sh
 dig +short food-api.sys0.in
 ```
+
+Cloud servers have a firewall outside the machine too. On AWS, it's the instance's security group. Open two ports in it, to everyone: 80 (HTTP), so Let's Encrypt can check the domain and nginx can send visitors to HTTPS, and 443 (HTTPS), for the app. Keep 8080 closed: only nginx, on the same machine, talks to our API server.
 
 ## 2. Install Docker and get the code
 
@@ -67,6 +69,12 @@ sudo docker compose -f compose.prod.yaml --env-file /etc/food-api.env up -d --bu
 
 This builds our image from the `Dockerfile`, and starts Postgres and then the API server. Both restart by themselves if they stop, and when the server reboots.
 
+The build leaves about 1.5 GB of cache behind. On a small disk, free it:
+
+```sh
+sudo docker builder prune -f
+```
+
 Then create the tables, and add the sample data. `run --rm` starts a one-off container from the same image, runs the program, and removes the container:
 
 ```sh
@@ -93,7 +101,7 @@ sudo certbot certonly --nginx -d food-api.sys0.in \
   --deploy-hook "systemctl reload nginx"
 ```
 
-certbot saves the certificate in `/etc/letsencrypt/live/food-api.sys0.in/`, which is where our nginx config looks for it.
+The first time, certbot asks for an email address, where Let's Encrypt warns you if a certificate is about to expire, and asks you to agree to the Let's Encrypt Subscriber Agreement. It saves the certificate in `/etc/letsencrypt/live/food-api.sys0.in/`, which is where our nginx config looks for it.
 
 Then install our config and reload nginx:
 
