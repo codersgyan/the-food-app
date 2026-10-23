@@ -1,0 +1,36 @@
+info:
+  name: Staff login
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/v1/login/verify"
+  body:
+    type: json
+    data: |-
+      {
+        "phone": "{{staffPhone}}",
+        "code": "{{otpCode}}"
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200) {
+          bru.setVar("staffToken", res.body.token);
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Logs in a member of restaurant 1's staff, and saves the token as staffToken. With the fake OTP service, the code is always 123456, so we skip sending it.

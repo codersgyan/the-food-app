@@ -1,0 +1,47 @@
+info:
+  name: Place order
+  type: http
+  seq: 7
+
+http:
+  method: POST
+  url: "{{baseUrl}}/v1/orders"
+  body:
+    type: json
+    data: |-
+      {
+        "restaurant_id": {{restaurantId}},
+        "address_id": {{addressId}},
+        "items": [
+          {
+            "dish_id": 1,
+            "quantity": 2
+          },
+          {
+            "dish_id": 4,
+            "quantity": 1
+          }
+        ]
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 201) {
+          bru.setVar("orderId", res.body.id);
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "201"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "Places an order for two chicken biryanis and a raita. It sends no prices: the server reads them from the menu. The script saves the new order's id as orderId."

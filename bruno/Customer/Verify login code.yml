@@ -1,0 +1,36 @@
+info:
+  name: Verify login code
+  type: http
+  seq: 2
+
+http:
+  method: POST
+  url: "{{baseUrl}}/v1/login/verify"
+  body:
+    type: json
+    data: |-
+      {
+        "phone": "{{customerPhone}}",
+        "code": "{{otpCode}}"
+      }
+
+runtime:
+  scripts:
+    - type: after-response
+      code: |-
+        if (res.status === 200) {
+          bru.setVar("customerToken", res.body.token);
+        }
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: Checks the code and returns a token. The script saves it as customerToken, which every other customer request sends. It's a runtime variable, so it's never saved to a file.

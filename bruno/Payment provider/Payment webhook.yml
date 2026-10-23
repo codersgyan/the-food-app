@@ -1,0 +1,47 @@
+info:
+  name: Payment webhook
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/payments/webhook"
+  body:
+    type: json
+    data: |-
+      {
+        "order_id": {{orderId}},
+        "payment_id": "pay_sentFromBruno",
+        "status": "captured"
+      }
+  auth: inherit
+
+runtime:
+  scripts:
+    - type: before-request
+      code: |-
+        // Sign the body the way the payment provider does: an HMAC-SHA256 of the
+        // body, keyed with the secret only the provider and our server know.
+        const CryptoJS = require("crypto-js");
+
+        const body = {
+          order_id: Number(bru.getVar("orderId")),
+          payment_id: "pay_sentFromBruno",
+          status: "captured",
+        };
+        req.setBody(body);
+        const signature = CryptoJS.HmacSHA256(JSON.stringify(body), bru.getEnvVar("webhookSecret"));
+        req.setHeader("X-Signature", signature.toString(CryptoJS.enc.Hex));
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "Pretends to be the payment provider. The script signs the body with webhookSecret, so the server accepts it. Change the secret, and the server answers 401. Send it twice: the second one changes nothing, and the server still answers 200."

@@ -1,0 +1,13 @@
+info:
+  name: Restaurant tablet
+  type: folder
+  seq: 2
+
+request:
+  auth:
+    type: bearer
+    token: "{{staffToken}}"
+
+docs:
+  content: The requests the restaurant's tablet sends. Run "Staff login" first. Restaurant 1's staff log in with +919810000001, restaurant 2's with +919810000002, and so on.
+  type: text/markdown

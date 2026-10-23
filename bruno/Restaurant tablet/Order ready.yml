@@ -1,0 +1,24 @@
+info:
+  name: Order ready
+  type: http
+  seq: 4
+
+http:
+  method: POST
+  url: "{{baseUrl}}/v1/orders/{{orderId}}/ready"
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: The order is cooked and packed. It works only on an accepted order.

@@ -1,0 +1,28 @@
+info:
+  name: Orders to cook
+  type: http
+  seq: 2
+
+http:
+  method: GET
+  url: "{{baseUrl}}/v1/restaurants/{{restaurantId}}/orders?status=paid"
+  params:
+    - name: status
+      value: paid
+      type: query
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: The orders the kitchen has received and still needs to cook, oldest first.

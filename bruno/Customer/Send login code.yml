@@ -1,0 +1,29 @@
+info:
+  name: Send login code
+  type: http
+  seq: 1
+
+http:
+  method: POST
+  url: "{{baseUrl}}/v1/login"
+  body:
+    type: json
+    data: |-
+      {
+        "phone": "{{customerPhone}}"
+      }
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: "Asks the OTP service to text a login code to the phone. The OTP service here is a fake: it texts nothing, and the code is always 123456."

@@ -1,0 +1,13 @@
+info:
+  name: Customer
+  type: folder
+  seq: 1
+
+request:
+  auth:
+    type: bearer
+    token: "{{customerToken}}"
+
+docs:
+  content: "The requests the customer's app sends, in the order of the customer's journey. Run \"Verify login code\" first: it saves the token that the other requests send."
+  type: text/markdown

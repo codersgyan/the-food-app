@@ -1,0 +1,30 @@
+info:
+  name: Mark dish sold out
+  type: http
+  seq: 5
+
+http:
+  method: PATCH
+  url: "{{baseUrl}}/v1/dishes/{{dishId}}"
+  body:
+    type: json
+    data: |-
+      {
+        "sold_out": true
+      }
+  auth: inherit
+
+runtime:
+  assertions:
+    - expression: res.status
+      operator: eq
+      value: "200"
+
+settings:
+  encodeUrl: true
+  timeout: 0
+  followRedirects: true
+  maxRedirects: 5
+  forwardAuthorizationHeader: true
+
+docs: 'Changes only the fields you send. Send {"price": 4500} to change the price instead, in paise. Orders already placed keep their old price.'

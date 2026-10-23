@@ -1,0 +1,8 @@
+info:
+  name: Payment provider
+  type: folder
+  seq: 3
+
+docs:
+  content: The request the payment provider sends to our server. You don't need it for the normal journey, because the fake provider sends it by itself.
+  type: text/markdown
