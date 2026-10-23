@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -116,4 +117,42 @@ func TestPlaceOrderRefusesDishesAndAddressesThatDontBelong(t *testing.T) {
 	assert.Equal(t, http.StatusBadRequest, res.status, "someone else's address")
 
 	assert.Equal(t, 0, a.orderCount())
+}
+
+// orderStatus returns the order's status, as its customer sees it.
+func (a *app) orderStatus(token string, orderID int64) string {
+	a.t.Helper()
+	res := a.do("GET", fmt.Sprintf("/v1/orders/%d", orderID), token, nil)
+	require.Equal(a.t, http.StatusOK, res.status, "body: %s", res.body)
+	var o struct {
+		Status string `json:"status"`
+	}
+	res.decode(&o)
+	return o.Status
+}
+
+func TestCustomerSeesTheirOrderButNotSomeoneElses(t *testing.T) {
+	a := newApp(t)
+	k := a.kitchen()
+	id := a.placeOrder(k)
+	vikram, _ := a.customer("+919800000002")
+
+	res := a.do("GET", fmt.Sprintf("/v1/orders/%d", id), k.customer, nil)
+	assert.Equal(t, http.StatusOK, res.status)
+	var o struct {
+		Status string `json:"status"`
+		Items  []struct {
+			Name     string `json:"name"`
+			Quantity int    `json:"quantity"`
+		} `json:"items"`
+	}
+	res.decode(&o)
+	assert.Equal(t, "pending", o.Status)
+	if assert.Len(t, o.Items, 2) {
+		assert.Equal(t, "Chicken biryani", o.Items[0].Name)
+		assert.Equal(t, 2, o.Items[0].Quantity)
+	}
+
+	res = a.do("GET", fmt.Sprintf("/v1/orders/%d", id), vikram, nil)
+	assert.Equal(t, http.StatusNotFound, res.status)
 }

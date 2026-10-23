@@ -88,3 +88,13 @@ func (s *OrderService) Place(ctx context.Context, userID int64, in NewOrder) (st
 	})
 	return order, err
 }
+
+// Get returns one of the user's orders. Someone else's order looks the same
+// as one that doesn't exist, so nobody can find out which order IDs are taken.
+func (s *OrderService) Get(ctx context.Context, userID, orderID int64) (store.Order, error) {
+	o, err := s.store.Order(ctx, orderID)
+	if errors.Is(err, store.ErrNotFound) || (err == nil && o.UserID != userID) {
+		return store.Order{}, fail(ErrNotFound, "order %d not found", orderID)
+	}
+	return o, err
+}

@@ -55,3 +55,45 @@ func (s *Store) InsertOrder(ctx context.Context, o Order) (Order, error) {
 	}
 	return o, nil
 }
+
+// Order returns an order with its items.
+func (s *Store) Order(ctx context.Context, id int64) (Order, error) {
+	var o Order
+	err := s.db.QueryRow(ctx, `
+		SELECT id, user_id, restaurant_id, placed_at, delivery_address, total, status, payment_id
+		FROM orders
+		WHERE id = $1`,
+		id,
+	).Scan(&o.ID, &o.UserID, &o.RestaurantID, &o.PlacedAt, &o.DeliveryAddress, &o.Total, &o.Status, &o.PaymentID)
+	if err != nil {
+		return Order{}, notFound(err)
+	}
+	o.Items, err = s.orderItems(ctx, id)
+	return o, err
+}
+
+// orderItems uses the index on order_items.order_id.
+func (s *Store) orderItems(ctx context.Context, orderID int64) ([]OrderItem, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT oi.dish_id, d.name, oi.quantity, oi.price
+		FROM order_items oi
+		JOIN dishes d ON d.id = oi.dish_id
+		WHERE oi.order_id = $1
+		ORDER BY oi.dish_id`,
+		orderID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var items []OrderItem
+	for rows.Next() {
+		var it OrderItem
+		if err := rows.Scan(&it.DishID, &it.Name, &it.Quantity, &it.Price); err != nil {
+			return nil, err
+		}
+		items = append(items, it)
+	}
+	return items, rows.Err()
+}
