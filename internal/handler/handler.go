@@ -7,5 +7,5 @@ import "net/http"
 // New returns the router with every route of the API.
 func New() http.Handler {
 	mux := http.NewServeMux()
-	return mux
+	return logRequests(recoverPanics(mux))
 }
