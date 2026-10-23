@@ -22,6 +22,7 @@ type Services struct {
 	Restaurants *RestaurantService
 	Orders      *OrderService
 	Payments    *PaymentService
+	Dishes      *DishService
 }
 
 func New(d Deps) *Services {
@@ -32,5 +33,6 @@ func New(d Deps) *Services {
 		Restaurants: &RestaurantService{store: d.Store, nearRadiusKm: d.NearRadiusKm},
 		Orders:      orders,
 		Payments:    &PaymentService{store: d.Store, payments: d.Payments, orders: orders},
+		Dishes:      &DishService{store: d.Store},
 	}
 }

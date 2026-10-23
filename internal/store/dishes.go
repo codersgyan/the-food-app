@@ -55,3 +55,19 @@ func (s *Store) RestaurantDishes(ctx context.Context, restaurantID int64, ids []
 	}
 	return scanDishes(rows)
 }
+
+// UpdateDish changes a dish's price, sold_out, or both (nil means "leave it
+// as it is"), but only if the dish belongs to the restaurant.
+func (s *Store) UpdateDish(ctx context.Context, restaurantID, id int64, price *int, soldOut *bool) (Dish, error) {
+	var d Dish
+	err := s.db.QueryRow(ctx, `
+		UPDATE dishes
+		SET price = COALESCE($3, price),
+		    sold_out = COALESCE($4, sold_out),
+		    updated_at = now()
+		WHERE id = $1 AND restaurant_id = $2
+		RETURNING id, restaurant_id, name, price, sold_out`,
+		id, restaurantID, price, soldOut,
+	).Scan(&d.ID, &d.RestaurantID, &d.Name, &d.Price, &d.SoldOut)
+	return d, notFound(err)
+}
