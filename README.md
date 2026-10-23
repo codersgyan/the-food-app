@@ -230,4 +230,4 @@ internal/auth/      login tokens
 internal/fake/      the fake OTP service and payment provider
 ```
 
-A request goes from the handler to a service to the store, and never the other way. Handlers know HTTP but no SQL. Services know the rules but not HTTP. The store knows SQL but no rules. So if you want to find the `WHERE status = 'pending'` that stops a double charge, it's in `internal/store/orders.go`, and the rule that uses it is in `internal/service/payments.go`.
+A request goes from the handler to a service to the store, and never the other way. Handlers know HTTP but no SQL. Services know the rules but not HTTP. The store knows SQL but no rules. So if you want to find the guard that stops a double charge, the SQL is `SetStatus` in `internal/store/orders.go` (`WHERE id = $1 AND status = $2`), and the rule that moves an order from pending to paying is `Pay` in `internal/service/payments.go`.
