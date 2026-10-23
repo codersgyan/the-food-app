@@ -19,8 +19,10 @@ func TestKitchenSeesOnlyItsOwnPaidOrders(t *testing.T) {
 	a := newApp(t)
 	k := a.kitchen()
 	staff := a.staffToken(k)
-	paid := a.placeOrder(k)
-	a.setStatus(paid, "paid")
+	first := a.placeOrder(k)
+	second := a.placeOrder(k)
+	a.setStatus(first, "paid")
+	a.setStatus(second, "paid")
 	a.placeOrder(k) // still pending
 	other := a.restaurant("Udupi Tiffin Room", 12.9719, 77.6412)
 	a.staff("+919810000002", other)
@@ -38,9 +40,12 @@ func TestKitchenSeesOnlyItsOwnPaidOrders(t *testing.T) {
 		} `json:"orders"`
 	}
 	res.decode(&out)
-	if assert.Len(t, out.Orders, 1) {
-		assert.Equal(t, paid, out.Orders[0].ID)
-		assert.Len(t, out.Orders[0].Items, 2, "the kitchen needs to know what to cook")
+	if assert.Len(t, out.Orders, 2) {
+		assert.Equal(t, first, out.Orders[0].ID, "oldest first")
+		assert.Equal(t, second, out.Orders[1].ID)
+		// Each order has its own biryani and raita, so the kitchen knows what to cook for which order.
+		assert.Len(t, out.Orders[0].Items, 2)
+		assert.Len(t, out.Orders[1].Items, 2)
 	}
 
 	res = a.do("GET", fmt.Sprintf("/v1/restaurants/%d/orders?status=paid", k.restaurant), otherStaff, nil)

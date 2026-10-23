@@ -133,12 +133,19 @@ func (s *Store) MarkPaid(ctx context.Context, id int64, paymentID string) (bool,
 
 // RestaurantOrders returns a restaurant's orders in one status, with their
 // items, oldest first. It uses the index on orders (restaurant_id, status).
+//
+// One query joins each order with its items and their dishes, so Postgres
+// does the joining. The result has one row for each item, with its order's
+// columns repeated, and the loop below puts the items back into their orders.
 func (s *Store) RestaurantOrders(ctx context.Context, restaurantID int64, status string) ([]Order, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, user_id, restaurant_id, placed_at, delivery_address, total, status, payment_id
-		FROM orders
-		WHERE restaurant_id = $1 AND status = $2
-		ORDER BY placed_at`,
+		SELECT o.id, o.user_id, o.restaurant_id, o.placed_at, o.delivery_address, o.total, o.status, o.payment_id,
+		       oi.dish_id, d.name, oi.quantity, oi.price
+		FROM orders o
+		JOIN order_items oi ON oi.order_id = o.id
+		JOIN dishes d ON d.id = oi.dish_id
+		WHERE o.restaurant_id = $1 AND o.status = $2
+		ORDER BY o.placed_at, o.id, oi.dish_id`,
 		restaurantID, status,
 	)
 	if err != nil {
@@ -149,19 +156,17 @@ func (s *Store) RestaurantOrders(ctx context.Context, restaurantID int64, status
 	var list []Order
 	for rows.Next() {
 		var o Order
-		if err := rows.Scan(&o.ID, &o.UserID, &o.RestaurantID, &o.PlacedAt, &o.DeliveryAddress, &o.Total, &o.Status, &o.PaymentID); err != nil {
+		var it OrderItem
+		if err := rows.Scan(&o.ID, &o.UserID, &o.RestaurantID, &o.PlacedAt, &o.DeliveryAddress, &o.Total, &o.Status, &o.PaymentID,
+			&it.DishID, &it.Name, &it.Quantity, &it.Price); err != nil {
 			return nil, err
 		}
-		list = append(list, o)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	for i := range list {
-		if list[i].Items, err = s.orderItems(ctx, list[i].ID); err != nil {
-			return nil, err
+		// The rows are sorted by order, so a new order starts when the ID changes.
+		if len(list) == 0 || list[len(list)-1].ID != o.ID {
+			list = append(list, o)
 		}
+		last := &list[len(list)-1]
+		last.Items = append(last.Items, it)
 	}
-	return list, nil
+	return list, rows.Err()
 }
