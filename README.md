@@ -113,17 +113,17 @@ curl -X PATCH localhost:8080/v1/dishes/4 -H "Authorization: Bearer $STAFF" -d '{
 
 ## Try it in Bruno
 
-If you prefer clicking to typing curl commands, the `bruno` folder is a collection for [Bruno](https://www.usebruno.com), an API client that keeps its collections as plain files in your repo. Open it in Bruno (version 3 or newer), and pick the `local` environment.
+If you prefer clicking to typing curl commands, the `bruno` folder is a collection for [Bruno](https://www.usebruno.com), an API client that keeps its collections as plain files in your repo. Open it in Bruno (version 3 or newer). The values every request uses, like the server's address and the seeded phone numbers, are collection variables, so there's no environment to pick. You'll find them in the collection's settings, under Variables.
 
 It has a folder for each kind of client: the customer's app, the restaurant's tablet, and the payment provider. The requests are in the same order as the journey above. Run "Verify login code" first: it saves the customer's token, and the other customer requests send it. "Staff login" does the same for the tablet. The tokens live only in Bruno's memory, so they never end up in git.
 
-The payment provider's webhook is there too, signed with the same secret the server checks. Change `webhookSecret` in the environment, and the server answers 401.
+The payment provider's webhook is there too, signed with the same secret the server checks. Change the `webhookSecret` variable, and the server answers 401.
 
 To run the whole collection from the terminal, while the server is running:
 
 ```sh
 cd bruno
-npx @usebruno/cli run -r --env local
+npx @usebruno/cli run -r
 ```
 
 Run the server with `FAKEPAY_DELAY=0s make run` for this, so each order is paid before the kitchen tries to accept it.

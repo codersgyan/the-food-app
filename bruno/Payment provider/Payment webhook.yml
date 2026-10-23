@@ -30,7 +30,7 @@ runtime:
           status: "captured",
         };
         req.setBody(body);
-        const signature = CryptoJS.HmacSHA256(JSON.stringify(body), bru.getEnvVar("webhookSecret"));
+        const signature = CryptoJS.HmacSHA256(JSON.stringify(body), bru.getCollectionVar("webhookSecret"));
         req.setHeader("X-Signature", signature.toString(CryptoJS.enc.Hex));
   assertions:
     - expression: res.status
