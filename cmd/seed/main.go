@@ -1,12 +1,19 @@
 // Command seed fills the database with restaurants in Bengaluru, their dishes,
 // two customers, and one staff member for each restaurant.
 // It empties every table first, so run it only on your own machine.
+//
+// For load tests, ask for more restaurants. The ones after the first 20 get
+// made-up names, a random spot in Bengaluru, and -dishes dishes each:
+//
+//	go run ./cmd/seed -restaurants 20000 -dishes 100   # 2 million dishes
 package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/jackc/pgx/v5"
 )
@@ -66,17 +73,25 @@ var restaurants = []restaurant{
 }
 
 func main() {
+	total := flag.Int("restaurants", len(restaurants), "how many restaurants, at least 20")
+	dishes := flag.Int("dishes", 100, "dishes for each restaurant after the first 20")
+	flag.Parse()
+	if *total < len(restaurants) || *dishes < 1 {
+		fmt.Fprintf(os.Stderr, "seed: -restaurants must be at least %d, and -dishes at least 1\n", len(restaurants))
+		os.Exit(2)
+	}
+
 	url := os.Getenv("DATABASE_URL")
 	if url == "" {
 		url = "postgres://food:food@localhost:5440/food?sslmode=disable"
 	}
-	if err := seed(context.Background(), url); err != nil {
+	if err := seed(context.Background(), url, *total, *dishes); err != nil {
 		fmt.Fprintln(os.Stderr, "seed:", err)
 		os.Exit(1)
 	}
 }
 
-func seed(ctx context.Context, url string) error {
+func seed(ctx context.Context, url string, total, dishesEach int) error {
 	conn, err := pgx.Connect(ctx, url)
 	if err != nil {
 		return err
@@ -137,6 +152,45 @@ func seed(ctx context.Context, url string) error {
 		}
 
 		fmt.Printf("seeded %d restaurants, their dishes and staff, and %d customers\n", len(restaurants), len(customers))
+
+		if total > len(restaurants) {
+			return seedMany(ctx, tx, total, dishesEach)
+		}
 		return nil
 	})
+}
+
+// seedMany adds made-up restaurants until there are total, each with
+// dishesEach dishes. Postgres makes the rows itself with generate_series,
+// so even millions of dishes take seconds, not minutes.
+func seedMany(ctx context.Context, tx pgx.Tx, total, dishesEach int) error {
+	start := time.Now()
+	first := len(restaurants) + 1
+
+	// A random spot in a box around Bengaluru.
+	_, err := tx.Exec(ctx, `
+		INSERT INTO restaurants (name, address, lat, lng)
+		SELECT 'Restaurant ' || g, 'Somewhere in Bengaluru', 12.85 + random() * 0.25, 77.50 + random() * 0.25
+		FROM generate_series($1::int, $2::int) g`,
+		first, total,
+	)
+	if err != nil {
+		return err
+	}
+
+	// Prices from ₹50 to ₹400, in paise.
+	_, err = tx.Exec(ctx, `
+		INSERT INTO dishes (restaurant_id, name, price)
+		SELECT r.id, 'Dish ' || g, 5000 + floor(random() * 35000)::int
+		FROM restaurants r, generate_series(1, $1::int) g
+		WHERE r.id >= $2`,
+		dishesEach, first,
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("added %d more restaurants with %d dishes each in %s\n",
+		total-len(restaurants), dishesEach, time.Since(start).Round(time.Millisecond))
+	return nil
 }

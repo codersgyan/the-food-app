@@ -1,4 +1,4 @@
-.PHONY: db db-down migrate migrate-down run seed test
+.PHONY: db db-down migrate migrate-down run seed seed-big test
 
 # Start Postgres and wait until it accepts connections.
 db:
@@ -27,3 +27,7 @@ seed:
 # Run every test. Needs Postgres running (make db).
 test:
 	go test ./...
+
+# The dataset from the indexes lesson: 20,000 restaurants, 100 dishes each.
+seed-big:
+	go run ./cmd/seed -restaurants 20000 -dishes 100
