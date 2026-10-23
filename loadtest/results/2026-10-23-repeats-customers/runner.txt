@@ -1,0 +1,3 @@
+k6: k6 v2.3.0 (commit/e088784614, go1.26.8, linux/arm64)
+vCPUs: 2
+memory: 3799 MB

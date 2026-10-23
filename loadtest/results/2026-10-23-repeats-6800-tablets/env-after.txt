@@ -1,0 +1,95 @@
+== machine
+instance type:      m7g.large
+availability zone:  ap-south-1a
+vCPUs:              2
+memory:             7755 MB
+os:                 Ubuntu 26.04.1 LTS
+kernel:             7.0.0-1014-aws
+arch:               aarch64
+
+== software
+git commit:         922acc4 (Deploy: allow nginx 4,096 connections per worker, and setup.sh for steps 2 to 5)
+docker:             29.9.2
+compose:            5.6.1
+nginx:              1.28.3 (Ubuntu)
+postgres:           18.6 (Debian 18.6-1.pgdg13+2)
+api image:          sha256:5470056091d8
+
+== settings
+api settings set in /etc/food-api.env (names only): JWT_SECRET PAYMENT_WEBHOOK_SECRET POSTGRES_PASSWORD 
+database pool:      pgxpool default, max(4, CPUs) = 4 connections
+postgres max_connections:100
+postgres shared_buffers:128MB
+postgres effective_cache_size:4GB
+postgres work_mem:  4MB
+nginx workers:      auto (auto = one per CPU)
+nginx connections:  4096 per worker
+
+== data
+restaurants:        20000 rows
+dishes:             1998071 rows
+users:              30002 rows
+addresses:          10002 rows
+orders:             6504 rows
+order_items:        13024 rows
+database size:      224 MB
+indexes:            addresses_pkey, addresses_user_id_idx, dishes_pkey, dishes_restaurant_id_idx, goose_db_version_pkey, order_items_order_id_idx, orders_pkey, orders_restaurant_id_status_idx, restaurants_pkey, users_phone_key, users_pkey
+
+== nginx config (/etc/nginx/sites-enabled/food-api.sys0.in.conf)
+# nginx in front of our API server, as in the reverse proxy lesson.
+#
+# nginx answers HTTPS on port 443 for food-api.sys0.in and passes each request
+# to our API server on port 8080 of the same machine, over plain HTTP. The API
+# server listens only on 127.0.0.1, so nobody on the internet can reach it
+# without going through nginx.
+#
+# Two things are left out of the lesson's last config, because our app
+# doesn't have them yet: the 5 MB size limit for photos of dishes, and the
+# restaurant dashboard at /dashboard/. nginx's default limit of 1 MB is plenty
+# for our requests.
+#
+# Install it as /etc/nginx/sites-available/food-api.sys0.in.conf.
+# deploy/README.md has every step.
+
+# Plain HTTP only sends the client to HTTPS. Customers send their addresses
+# and phone numbers, so nothing is answered over plain HTTP.
+server {
+    listen 80;
+    listen [::]:80;
+    server_name food-api.sys0.in;
+
+    location / {
+        return 301 https://$host$request_uri;
+    }
+}
+
+server {
+    listen 443 ssl;
+    listen [::]:443 ssl;
+    server_name food-api.sys0.in;
+
+    # Compress JSON too. By default nginx compresses only HTML.
+    gzip on;
+    gzip_types application/json;
+
+    # Requests from the customer's app and the restaurant's tablet.
+    location /v1/ {
+        proxy_pass http://127.0.0.1:8080;
+    }
+
+    # The payment provider's webhook. It isn't under /v1/, so it needs its own
+    # location, or the provider's requests would never reach our server.
+    location /payments/ {
+        proxy_pass http://127.0.0.1:8080;
+    }
+
+    # Anything else isn't ours, so answer 404 instead of nginx's welcome page.
+    location / {
+        return 404;
+    }
+
+    # Let's Encrypt's certificate for the domain. certbot creates these files
+    # and renews them before they expire.
+    ssl_certificate     /etc/letsencrypt/live/food-api.sys0.in/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/food-api.sys0.in/privkey.pem;
+}
