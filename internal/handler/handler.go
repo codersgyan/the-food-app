@@ -10,13 +10,15 @@ import (
 )
 
 type handler struct {
-	svc    *service.Services
-	tokens *auth.Tokens
+	svc           *service.Services
+	tokens        *auth.Tokens
+	webhookSecret string
 }
 
-// New returns the router with every route of the API.
-func New(svc *service.Services, tokens *auth.Tokens) http.Handler {
-	h := &handler{svc: svc, tokens: tokens}
+// New returns the router with every route of the API. webhookSecret is the
+// secret the payment provider signs its webhooks with.
+func New(svc *service.Services, tokens *auth.Tokens, webhookSecret string) http.Handler {
+	h := &handler{svc: svc, tokens: tokens, webhookSecret: webhookSecret}
 	mux := http.NewServeMux()
 
 	mux.HandleFunc("POST /v1/login", h.login)
@@ -28,6 +30,7 @@ func New(svc *service.Services, tokens *auth.Tokens) http.Handler {
 	mux.HandleFunc("POST /v1/orders", h.customer(h.placeOrder))
 	mux.HandleFunc("GET /v1/orders/{id}", h.customer(h.order))
 	mux.HandleFunc("POST /v1/orders/{id}/pay", h.customer(h.pay))
+	mux.HandleFunc("POST /payments/webhook", h.paymentWebhook)
 
 	return logRequests(recoverPanics(mux))
 }

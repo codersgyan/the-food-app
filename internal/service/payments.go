@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/codersgyan/the-food-app/internal/store"
 )
@@ -50,4 +51,28 @@ func (s *PaymentService) Pay(ctx context.Context, userID, orderID int64) (string
 		return "", err
 	}
 	return paymentID, nil
+}
+
+// Settle records what the payment provider says about an order's payment:
+// "captured" means the money is ours, and "failed" means the customer can
+// try again. Providers send the same webhook more than once, so a webhook
+// for an order that's no longer paying changes nothing.
+func (s *PaymentService) Settle(ctx context.Context, orderID int64, paymentID, status string) error {
+	var moved bool
+	var err error
+	switch status {
+	case "captured":
+		moved, err = s.store.MarkPaid(ctx, orderID, paymentID)
+	case "failed":
+		moved, err = s.store.SetStatus(ctx, orderID, "paying", "pending")
+	default:
+		return fail(ErrInvalid, "unknown payment status %q", status)
+	}
+	if err != nil {
+		return err
+	}
+	if !moved {
+		slog.InfoContext(ctx, "payment webhook changed nothing", "order_id", orderID, "payment_id", paymentID, "status", status)
+	}
+	return nil
 }

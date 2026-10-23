@@ -119,3 +119,14 @@ func (s *Store) SetPaymentID(ctx context.Context, id int64, paymentID string) er
 	)
 	return err
 }
+
+// MarkPaid moves a paying order to paid and saves its payment ID. Like
+// SetStatus, it reports whether it moved the order.
+func (s *Store) MarkPaid(ctx context.Context, id int64, paymentID string) (bool, error) {
+	tag, err := s.db.Exec(ctx, `
+		UPDATE orders SET status = 'paid', payment_id = $2, updated_at = now()
+		WHERE id = $1 AND status = 'paying'`,
+		id, paymentID,
+	)
+	return tag.RowsAffected() == 1, err
+}

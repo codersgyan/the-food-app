@@ -88,7 +88,7 @@ func newApp(t *testing.T) *app {
 
 		NearRadiusKm: 7,
 	})
-	srv := httptest.NewServer(handler.New(svc, tokens))
+	srv := httptest.NewServer(handler.New(svc, tokens, webhookSecret))
 	t.Cleanup(srv.Close)
 	payments.WebhookURL = srv.URL + "/payments/webhook"
 

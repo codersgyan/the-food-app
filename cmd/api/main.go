@@ -66,7 +66,7 @@ func run() error {
 
 	srv := &http.Server{
 		Addr:              cfg.addr,
-		Handler:           handler.New(svc, tokens),
+		Handler:           handler.New(svc, tokens, cfg.paymentWebhookSecret),
 		ReadHeaderTimeout: 5 * time.Second,
 		ReadTimeout:       10 * time.Second,
 		WriteTimeout:      10 * time.Second,

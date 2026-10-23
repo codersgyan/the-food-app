@@ -52,3 +52,10 @@ func (a *app) soldOut(dishID int64) {
 	_, err := a.pool.Exec(a.t.Context(), `UPDATE dishes SET sold_out = true WHERE id = $1`, dishID)
 	require.NoError(a.t, err)
 }
+
+// setStatus puts an order straight into a status, without going through the API.
+func (a *app) setStatus(orderID int64, status string) {
+	a.t.Helper()
+	_, err := a.pool.Exec(a.t.Context(), `UPDATE orders SET status = $2 WHERE id = $1`, orderID, status)
+	require.NoError(a.t, err)
+}
