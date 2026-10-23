@@ -118,6 +118,11 @@ func (s *OrderService) Accept(ctx context.Context, staffRestaurantID, orderID in
 	return s.advance(ctx, staffRestaurantID, orderID, "paid", "accepted")
 }
 
+// Ready is the kitchen saying an accepted order is cooked and packed.
+func (s *OrderService) Ready(ctx context.Context, staffRestaurantID, orderID int64) error {
+	return s.advance(ctx, staffRestaurantID, orderID, "accepted", "ready")
+}
+
 // advance moves one of the restaurant's orders from one status to the next.
 func (s *OrderService) advance(ctx context.Context, staffRestaurantID, orderID int64, from, to string) error {
 	o, err := s.store.Order(ctx, orderID)

@@ -121,6 +121,11 @@ func (h *handler) acceptOrder(w http.ResponseWriter, r *http.Request) {
 	h.advanceOrder(w, r, h.svc.Orders.Accept, "accepted")
 }
 
+// POST /v1/orders/{id}/ready: the order is cooked and packed.
+func (h *handler) readyOrder(w http.ResponseWriter, r *http.Request) {
+	h.advanceOrder(w, r, h.svc.Orders.Ready, "ready")
+}
+
 func (h *handler) advanceOrder(w http.ResponseWriter, r *http.Request,
 	advance func(ctx context.Context, staffRestaurantID, orderID int64) error, status string) {
 	id, err := pathID(r, "id")

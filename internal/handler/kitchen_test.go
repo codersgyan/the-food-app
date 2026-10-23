@@ -63,3 +63,18 @@ func TestKitchenAcceptsOnlyItsOwnPaidOrders(t *testing.T) {
 	assert.Equal(t, http.StatusOK, a.do("POST", accept, staff, nil).status)
 	assert.Equal(t, "accepted", a.orderStatus(k.customer, id))
 }
+
+func TestOnlyAnAcceptedOrderCanBeReady(t *testing.T) {
+	a := newApp(t)
+	k := a.kitchen()
+	staff := a.staffToken(k)
+	id := a.placeOrder(k)
+	a.setStatus(id, "paid")
+	ready := fmt.Sprintf("/v1/orders/%d/ready", id)
+
+	assert.Equal(t, http.StatusConflict, a.do("POST", ready, staff, nil).status, "not accepted yet")
+
+	a.setStatus(id, "accepted")
+	assert.Equal(t, http.StatusOK, a.do("POST", ready, staff, nil).status)
+	assert.Equal(t, "ready", a.orderStatus(k.customer, id))
+}
