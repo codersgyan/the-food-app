@@ -26,3 +26,12 @@ func (s *Store) AddressesOf(ctx context.Context, userID int64) ([]Address, error
 	}
 	return list, rows.Err()
 }
+
+// AddAddress saves an address for a user and returns its ID.
+func (s *Store) AddAddress(ctx context.Context, userID int64, address string) (int64, error) {
+	var id int64
+	err := s.db.QueryRow(ctx,
+		`INSERT INTO addresses (user_id, address) VALUES ($1, $2) RETURNING id`, userID, address,
+	).Scan(&id)
+	return id, err
+}
