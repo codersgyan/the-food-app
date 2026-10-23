@@ -32,5 +32,8 @@ func New(svc *service.Services, tokens *auth.Tokens, webhookSecret string) http.
 	mux.HandleFunc("POST /v1/orders/{id}/pay", h.customer(h.pay))
 	mux.HandleFunc("POST /payments/webhook", h.paymentWebhook)
 
+	// The restaurant's tablet
+	mux.HandleFunc("GET /v1/restaurants/{id}/orders", h.restaurant(h.restaurantOrders))
+
 	return logRequests(recoverPanics(mux))
 }

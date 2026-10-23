@@ -98,3 +98,17 @@ func (s *OrderService) Get(ctx context.Context, userID, orderID int64) (store.Or
 	}
 	return o, err
 }
+
+var statuses = map[string]bool{"pending": true, "paying": true, "paid": true, "accepted": true, "ready": true}
+
+// ForRestaurant returns a restaurant's orders in one status. Staff can see
+// only their own restaurant's orders.
+func (s *OrderService) ForRestaurant(ctx context.Context, staffRestaurantID, restaurantID int64, status string) ([]store.Order, error) {
+	if staffRestaurantID != restaurantID {
+		return nil, fail(ErrForbidden, "you can only see your own restaurant's orders")
+	}
+	if !statuses[status] {
+		return nil, fail(ErrInvalid, "status must be pending, paying, paid, accepted or ready")
+	}
+	return s.store.RestaurantOrders(ctx, restaurantID, status)
+}

@@ -130,3 +130,38 @@ func (s *Store) MarkPaid(ctx context.Context, id int64, paymentID string) (bool,
 	)
 	return tag.RowsAffected() == 1, err
 }
+
+// RestaurantOrders returns a restaurant's orders in one status, with their
+// items, oldest first. It uses the index on orders (restaurant_id, status).
+func (s *Store) RestaurantOrders(ctx context.Context, restaurantID int64, status string) ([]Order, error) {
+	rows, err := s.db.Query(ctx, `
+		SELECT id, user_id, restaurant_id, placed_at, delivery_address, total, status, payment_id
+		FROM orders
+		WHERE restaurant_id = $1 AND status = $2
+		ORDER BY placed_at`,
+		restaurantID, status,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var list []Order
+	for rows.Next() {
+		var o Order
+		if err := rows.Scan(&o.ID, &o.UserID, &o.RestaurantID, &o.PlacedAt, &o.DeliveryAddress, &o.Total, &o.Status, &o.PaymentID); err != nil {
+			return nil, err
+		}
+		list = append(list, o)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	for i := range list {
+		if list[i].Items, err = s.orderItems(ctx, list[i].ID); err != nil {
+			return nil, err
+		}
+	}
+	return list, nil
+}

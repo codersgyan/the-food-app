@@ -90,3 +90,27 @@ func (h *handler) order(w http.ResponseWriter, r *http.Request) {
 	}
 	writeJSON(w, http.StatusOK, toOrderJSON(o))
 }
+
+// GET /v1/restaurants/{id}/orders?status=paid returns the restaurant's orders
+// in that status, oldest first. The tablet asks for the paid ones: the
+// orders waiting for the kitchen.
+func (h *handler) restaurantOrders(w http.ResponseWriter, r *http.Request) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	list, err := h.svc.Orders.ForRestaurant(r.Context(), claims(r).RestaurantID, id, r.URL.Query().Get("status"))
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+
+	res := struct {
+		Orders []orderJSON `json:"orders"`
+	}{Orders: []orderJSON{}}
+	for _, o := range list {
+		res.Orders = append(res.Orders, toOrderJSON(o))
+	}
+	writeJSON(w, http.StatusOK, res)
+}
