@@ -20,7 +20,7 @@ The indexes lesson shows the tablet asking for the orders it has received and st
 GET /v1/restaurants/42/orders?status=paid
 ```
 
-Only the staff of restaurant 42 can call it. The tablet asks every few seconds. Later in the course, the server will push new orders to the tablet instead.
+Only the staff of restaurant 42 can call it. The requirements lesson says new orders reach the tablet through an open connection, and we'll build that in the live updates module. Until then, the tablet asks this request every few seconds.
 
 ## Where does a user's name come from?
 
@@ -45,6 +45,12 @@ When a customer asks for someone else's order, the server answers 404, not 403. 
 The requirements lesson names the request `POST /payments/webhook`. It has no `/v1`, because the payment provider decides what it sends, not our API.
 
 Anyone on the internet can call that URL, so the server checks each webhook really came from the provider. The provider signs the body with a secret that only it and our server know (`PAYMENT_WEBHOOK_SECRET`), and sends the signature in the `X-Signature` header. Razorpay signs its webhooks the same way. A webhook with a wrong signature gets a 401 and changes nothing.
+
+The requirements lesson shows the webhook's body as `{ "order_id": 9001, "status": "captured" }`. Ours also has the provider's `payment_id`, because the order saves it (the data modeling lesson's payment_id column), and real providers always send it:
+
+```json
+{ "order_id": 9001, "payment_id": "pay_29QQoUBi66xm2f", "status": "captured" }
+```
 
 ## What happens to an order's status?
 
