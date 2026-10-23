@@ -29,13 +29,33 @@ sudo install /tmp/food-api /usr/local/bin/food-api
 
 ## 3. Give it its settings
 
-Create `/etc/food-api.env`. `ADDR=127.0.0.1:8080` makes the server listen only inside the machine, so every request has to go through nginx. Use your own long random secrets, never the defaults:
+The server reads its settings from `/etc/food-api.env`. It's the same `KEY=value` format as `.env` on your laptop, and systemd loads it when it starts the server. Copy `.env.example` from the repo to the server as a starting point:
 
 ```sh
+scp .env.example you@food-api.sys0.in:/tmp/
+```
+
+On the server, make two new secrets. Never reuse the values from `.env.example`: they're in a public repo.
+
+```sh
+openssl rand -hex 32   # for JWT_SECRET
+openssl rand -hex 32   # for PAYMENT_WEBHOOK_SECRET
+```
+
+Then install the file, and make it readable only by root, because it holds the secrets:
+
+```sh
+sudo install -m 600 /tmp/.env.example /etc/food-api.env
+sudo nano /etc/food-api.env
+```
+
+Put the two new secrets in, and set these lines too. `ADDR=127.0.0.1:8080` makes the server listen only inside the machine, so every request has to go through nginx:
+
+```sh
+JWT_SECRET=<the first secret>
+PAYMENT_WEBHOOK_SECRET=<the second secret>
 ADDR=127.0.0.1:8080
 DATABASE_URL=postgres://food:…@…:5432/food
-JWT_SECRET=…
-PAYMENT_WEBHOOK_SECRET=…
 FAKEPAY_WEBHOOK_URL=http://127.0.0.1:8080/payments/webhook
 ```
 

@@ -8,8 +8,9 @@ import (
 	"github.com/codersgyan/the-food-app/internal/fake"
 )
 
-// config is everything the server reads from the environment.
-// The defaults are fine on your laptop. Never use them in production.
+// config is everything the server reads from the environment. Most settings
+// have a default that works on your laptop. The two secrets don't: the code
+// is public, so a default secret would be a secret everyone knows.
 type config struct {
 	addr         string
 	databaseURL  string
@@ -30,10 +31,15 @@ func loadConfig() (config, error) {
 	cfg := config{
 		addr:        env("ADDR", ":8080"),
 		databaseURL: env("DATABASE_URL", "postgres://food:food@localhost:5440/food?sslmode=disable"),
-		jwtSecret:   env("JWT_SECRET", "dev-only-jwt-secret"),
+		jwtSecret:   os.Getenv("JWT_SECRET"),
 
-		paymentWebhookSecret: env("PAYMENT_WEBHOOK_SECRET", "dev-only-webhook-secret"),
+		paymentWebhookSecret: os.Getenv("PAYMENT_WEBHOOK_SECRET"),
 		payWebhookURL:        env("FAKEPAY_WEBHOOK_URL", "http://localhost:8080/payments/webhook"),
+	}
+	for key, v := range map[string]string{"JWT_SECRET": cfg.jwtSecret, "PAYMENT_WEBHOOK_SECRET": cfg.paymentWebhookSecret} {
+		if v == "" {
+			return config{}, fmt.Errorf("%s is not set: on your laptop, run cp .env.example .env", key)
+		}
 	}
 	var err error
 	if cfg.otpDelay, err = fake.ParseDelay(env("FAKEOTP_DELAY", "200ms-500ms")); err != nil {

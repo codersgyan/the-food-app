@@ -1,3 +1,7 @@
+# Load the settings from .env, if it exists (cp .env.example .env).
+-include .env
+export
+
 .PHONY: db db-down migrate migrate-down run seed seed-big test proxy
 
 # Start Postgres and wait until it accepts connections.

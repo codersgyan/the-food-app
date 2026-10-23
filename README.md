@@ -12,6 +12,7 @@ We'll keep coming back to this app as the course goes on. When a lesson says som
 ## Run it
 
 ```sh
+cp .env.example .env   # your settings, including two secrets
 make db        # start Postgres 18 in Docker
 make migrate   # create the tables and indexes
 make seed      # add 20 restaurants in Bengaluru, their dishes, and some users
@@ -182,14 +183,16 @@ Now about 1 in 5 payments fails, and the order goes back to `pending` so the cus
 
 ## Settings
 
-The server reads these from the environment. The defaults work on your laptop, but never use the default secrets in production.
+The server reads its settings from environment variables. On your laptop, they come from `.env`, which the Makefile loads, and `.env.example` explains every one. `.env` is in `.gitignore`, so your settings never end up in git.
+
+The two secrets have no default, and the server won't start without them. The code is public, so a default secret would be one that everyone knows: anyone could sign their own login token, or send a fake "payment captured" webhook. `.env.example` has values that are fine on your laptop, and on a server you make your own (see [deploy/README.md](deploy/README.md)).
 
 | Variable | Default | What it is |
 | --- | --- | --- |
+| `JWT_SECRET` | none, required | signs login tokens |
+| `PAYMENT_WEBHOOK_SECRET` | none, required | the secret the payment provider signs webhooks with |
 | `ADDR` | `:8080` | where the server listens |
 | `DATABASE_URL` | `postgres://food:food@localhost:5440/food?sslmode=disable` | the Postgres to use |
-| `JWT_SECRET` | `dev-only-jwt-secret` | signs login tokens |
-| `PAYMENT_WEBHOOK_SECRET` | `dev-only-webhook-secret` | the secret the payment provider signs webhooks with |
 | `NEAR_RADIUS_KM` | `7` | how far a restaurant can be and still deliver |
 | `FAKEOTP_DELAY` | `200ms-500ms` | how long the fake OTP service takes to answer |
 | `FAKEPAY_DELAY` | `1s-2s` | how long the customer takes to approve a payment |
