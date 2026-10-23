@@ -112,3 +112,27 @@ func (s *OrderService) ForRestaurant(ctx context.Context, staffRestaurantID, res
 	}
 	return s.store.RestaurantOrders(ctx, restaurantID, status)
 }
+
+// Accept is the kitchen saying it will cook a paid order.
+func (s *OrderService) Accept(ctx context.Context, staffRestaurantID, orderID int64) error {
+	return s.advance(ctx, staffRestaurantID, orderID, "paid", "accepted")
+}
+
+// advance moves one of the restaurant's orders from one status to the next.
+func (s *OrderService) advance(ctx context.Context, staffRestaurantID, orderID int64, from, to string) error {
+	o, err := s.store.Order(ctx, orderID)
+	if errors.Is(err, store.ErrNotFound) || (err == nil && o.RestaurantID != staffRestaurantID) {
+		return fail(ErrNotFound, "order %d not found", orderID)
+	}
+	if err != nil {
+		return err
+	}
+	moved, err := s.store.SetStatus(ctx, orderID, from, to)
+	if err != nil {
+		return err
+	}
+	if !moved {
+		return fail(ErrConflict, "order %d is not %s", orderID, from)
+	}
+	return nil
+}

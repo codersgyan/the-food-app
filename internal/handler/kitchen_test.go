@@ -46,3 +46,20 @@ func TestKitchenSeesOnlyItsOwnPaidOrders(t *testing.T) {
 	res = a.do("GET", fmt.Sprintf("/v1/restaurants/%d/orders?status=paid", k.restaurant), otherStaff, nil)
 	assert.Equal(t, http.StatusForbidden, res.status, "another restaurant's staff")
 }
+
+func TestKitchenAcceptsOnlyItsOwnPaidOrders(t *testing.T) {
+	a := newApp(t)
+	k := a.kitchen()
+	staff := a.staffToken(k)
+	id := a.placeOrder(k)
+	accept := fmt.Sprintf("/v1/orders/%d/accept", id)
+
+	assert.Equal(t, http.StatusConflict, a.do("POST", accept, staff, nil).status, "not paid yet")
+
+	a.setStatus(id, "paid")
+	a.staff("+919810000002", a.restaurant("Udupi Tiffin Room", 12.9719, 77.6412))
+	assert.Equal(t, http.StatusNotFound, a.do("POST", accept, a.login("+919810000002"), nil).status, "another restaurant")
+
+	assert.Equal(t, http.StatusOK, a.do("POST", accept, staff, nil).status)
+	assert.Equal(t, "accepted", a.orderStatus(k.customer, id))
+}

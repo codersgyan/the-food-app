@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"fmt"
 	"net/http"
 	"time"
@@ -113,4 +114,26 @@ func (h *handler) restaurantOrders(w http.ResponseWriter, r *http.Request) {
 		res.Orders = append(res.Orders, toOrderJSON(o))
 	}
 	writeJSON(w, http.StatusOK, res)
+}
+
+// POST /v1/orders/{id}/accept: the kitchen will cook this paid order.
+func (h *handler) acceptOrder(w http.ResponseWriter, r *http.Request) {
+	h.advanceOrder(w, r, h.svc.Orders.Accept, "accepted")
+}
+
+func (h *handler) advanceOrder(w http.ResponseWriter, r *http.Request,
+	advance func(ctx context.Context, staffRestaurantID, orderID int64) error, status string) {
+	id, err := pathID(r, "id")
+	if err != nil {
+		writeError(w, r, err)
+		return
+	}
+	if err := advance(r.Context(), claims(r).RestaurantID, id); err != nil {
+		writeError(w, r, err)
+		return
+	}
+	writeJSON(w, http.StatusOK, struct {
+		ID     int64  `json:"id"`
+		Status string `json:"status"`
+	}{id, status})
 }
