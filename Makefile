@@ -1,4 +1,4 @@
-.PHONY: db db-down migrate migrate-down
+.PHONY: db db-down migrate migrate-down run
 
 # Start Postgres and wait until it accepts connections.
 db:
@@ -15,3 +15,7 @@ migrate:
 # Roll back the most recent migration.
 migrate-down:
 	go run ./cmd/migrate down
+
+# Run the API server on :8080.
+run:
+	go run ./cmd/api
