@@ -76,12 +76,21 @@ curl -s 127.0.0.1:8080/v1/restaurants/1/menu
 
 ## 5. Get a certificate, then start nginx
 
-Install nginx and certbot. certbot gets a free HTTPS certificate from Let's Encrypt, and renews it before it expires:
+HTTPS needs a certificate for `food-api.sys0.in`. We get a free one from Let's Encrypt, using a program called certbot. Before Let's Encrypt gives us one, it checks that we really control the domain: certbot puts a small file on our server, and Let's Encrypt fetches it over plain HTTP. So port 80 has to be open. If the server runs the ufw firewall, open ports 80 and 443:
+
+```sh
+sudo ufw allow 'Nginx Full'
+```
+
+Install nginx and certbot, and get the certificate:
 
 ```sh
 sudo apt install nginx certbot python3-certbot-nginx
-sudo certbot certonly --nginx -d food-api.sys0.in
+sudo certbot certonly --nginx -d food-api.sys0.in \
+  --deploy-hook "systemctl reload nginx"
 ```
+
+certbot saves the certificate in `/etc/letsencrypt/live/food-api.sys0.in/`, which is where our nginx config looks for it.
 
 Then install our config and reload nginx:
 
@@ -91,6 +100,24 @@ sudo ln -s /etc/nginx/sites-available/food-api.sys0.in.conf /etc/nginx/sites-ena
 sudo nginx -t
 sudo systemctl reload nginx
 ```
+
+### How the certificate renews itself
+
+A Let's Encrypt certificate lasts 90 days. The certbot package installs a timer that runs `certbot renew` twice a day, and it renews any certificate that has less than 30 days left. You can see the timer here:
+
+```sh
+systemctl list-timers certbot.timer
+```
+
+Renewing writes a new certificate to the disk, but nginx keeps the old one in memory until it's reloaded. That's what `--deploy-hook` is for: after every renewal, certbot runs `systemctl reload nginx`, so nginx picks up the new certificate. certbot saves the hook in `/etc/letsencrypt/renewal/food-api.sys0.in.conf`, so you give it only once. Without it, every renewal would work, and the site would still stop working on the day the old certificate expires.
+
+To check that renewal works, without waiting two months:
+
+```sh
+sudo certbot renew --dry-run
+```
+
+It goes through the whole renewal against Let's Encrypt's test servers, and changes nothing.
 
 ## 6. Check it from your laptop
 
