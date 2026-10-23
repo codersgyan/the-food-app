@@ -1,0 +1,6 @@
+name:             customers-only-all-indexes
+started (UTC):    2026-10-23T13:54:45Z
+target:           https://food-api.sys0.in
+multipliers:      1 2 3 5 10 (1x = 17 orders a second)
+step length:      3m, with 30 s rest between steps
+tablets:          0, each asking for new orders every 10 s

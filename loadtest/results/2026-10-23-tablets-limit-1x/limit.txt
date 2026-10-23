@@ -1,0 +1,1 @@
+at 1x, with a poll every 10 s, the limit is between 6200 tablets (passed) and 6800 (failed)

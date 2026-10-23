@@ -1,0 +1,21 @@
+MULT=0.25  orders/s=4.25  visits/s=10.6  tablets=20000 every 10s  duration=3m
+
+request        count     req/s    p50 ms   p95 ms   p99 ms   max ms   failed
+login             197       1.0       567     1266     1490     1563     0.00%
+verify            197       1.0      1350     2189     2374     2414     0.00%
+me               1821       9.5      1526     2973     3444     3861     0.05%
+near             1820       9.5      1119     2183     2590     3243     0.11%
+menu             7266      38.1      1515     2941     3396     3876     0.08%
+order             738       3.9       864     1729     2093     2296     0.00%
+pay               738       3.9      2187     5024     5728     6023     0.00%
+status           1050       5.5      1223     2940     3336     3710     0.00%
+tablet_poll    349748    1833.4       995     1723     2010     2556     0.06%
+accept            701       3.7      2109     4164     4754     5535    14.84%
+ready             597       3.1      1858     3916     4543     5360     0.00%
+ALL            364873    1912.7      1003     1784     2294     6023     0.09%
+
+orders placed 738, paid 738, cooked 597
+payment time p50 3048 ms, p99 7202 ms
+dropped iterations (k6 couldn't start a visit on time) 10341
+max VUs 3897
+
