@@ -23,6 +23,7 @@ func New(svc *service.Services, tokens *auth.Tokens) http.Handler {
 	mux.HandleFunc("POST /v1/login/verify", h.verifyLogin)
 	mux.HandleFunc("GET /v1/me", h.customer(h.me))
 	mux.HandleFunc("POST /v1/addresses", h.customer(h.addAddress))
+	mux.HandleFunc("GET /v1/restaurants", h.restaurantsNear)
 
 	return logRequests(recoverPanics(mux))
 }

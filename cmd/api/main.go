@@ -55,6 +55,8 @@ func run() error {
 		Store:  store.New(pool),
 		OTP:    &fake.OTP{Delay: cfg.otpDelay},
 		Tokens: tokens,
+
+		NearRadiusKm: cfg.nearRadiusKm,
 	})
 
 	srv := &http.Server{

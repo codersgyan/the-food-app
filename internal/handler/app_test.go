@@ -67,6 +67,8 @@ func newApp(t *testing.T) *app {
 		Store:  store.New(pool),
 		OTP:    &fake.OTP{},
 		Tokens: tokens,
+
+		NearRadiusKm: 7,
 	})
 	srv := httptest.NewServer(handler.New(svc, tokens))
 	t.Cleanup(srv.Close)
