@@ -1,5 +1,6 @@
 # Binaries
 /bin/
+/food-api
 
 # Local settings
 .env
