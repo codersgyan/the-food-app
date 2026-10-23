@@ -46,3 +46,11 @@ func (s *Store) RestaurantsNear(ctx context.Context, lat, lng, radiusKm float64)
 	}
 	return list, rows.Err()
 }
+
+func (s *Store) Restaurant(ctx context.Context, id int64) (Restaurant, error) {
+	var r Restaurant
+	err := s.db.QueryRow(ctx,
+		`SELECT id, name, address FROM restaurants WHERE id = $1`, id,
+	).Scan(&r.ID, &r.Name, &r.Address)
+	return r, notFound(err)
+}

@@ -34,3 +34,21 @@ func (a *app) address(userID int64, address string) int64 {
 	require.NoError(a.t, err)
 	return id
 }
+
+// dish adds a dish that costs price paise.
+func (a *app) dish(restaurantID int64, name string, price int) int64 {
+	a.t.Helper()
+	var id int64
+	err := a.pool.QueryRow(a.t.Context(),
+		`INSERT INTO dishes (restaurant_id, name, price) VALUES ($1, $2, $3) RETURNING id`,
+		restaurantID, name, price,
+	).Scan(&id)
+	require.NoError(a.t, err)
+	return id
+}
+
+func (a *app) soldOut(dishID int64) {
+	a.t.Helper()
+	_, err := a.pool.Exec(a.t.Context(), `UPDATE dishes SET sold_out = true WHERE id = $1`, dishID)
+	require.NoError(a.t, err)
+}

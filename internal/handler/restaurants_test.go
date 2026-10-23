@@ -1,6 +1,7 @@
 package handler_test
 
 import (
+	"fmt"
 	"net/http"
 	"net/url"
 	"testing"
@@ -38,4 +39,38 @@ func TestRestaurantsNearNeedsAValidSpot(t *testing.T) {
 		res := a.do("GET", "/v1/restaurants?near="+url.QueryEscape(near), "", nil)
 		assert.Equal(t, http.StatusBadRequest, res.status, "near=%q", near)
 	}
+}
+
+func TestMenuHasOnlyThatRestaurantsDishesWithSoldOutOnesMarked(t *testing.T) {
+	a := newApp(t)
+	biryaniHouse := a.restaurant("Biryani House", 12.9352, 77.6245)
+	udupi := a.restaurant("Udupi Tiffin Room", 12.9719, 77.6412)
+	biryani := a.dish(biryaniHouse, "Chicken biryani", 25000)
+	raita := a.dish(biryaniHouse, "Raita", 4000)
+	a.dish(udupi, "Masala dosa", 9000)
+	a.soldOut(raita)
+
+	res := a.do("GET", fmt.Sprintf("/v1/restaurants/%d/menu", biryaniHouse), "", nil)
+
+	assert.Equal(t, http.StatusOK, res.status)
+	var menu struct {
+		ID     int64 `json:"id"`
+		Dishes []struct {
+			ID      int64 `json:"id"`
+			Price   int   `json:"price"`
+			SoldOut bool  `json:"sold_out"`
+		} `json:"dishes"`
+	}
+	res.decode(&menu)
+	assert.Equal(t, biryaniHouse, menu.ID)
+	if assert.Len(t, menu.Dishes, 2) {
+		assert.Equal(t, biryani, menu.Dishes[0].ID)
+		assert.Equal(t, 25000, menu.Dishes[0].Price)
+		assert.False(t, menu.Dishes[0].SoldOut)
+		assert.Equal(t, raita, menu.Dishes[1].ID)
+		assert.True(t, menu.Dishes[1].SoldOut)
+	}
+
+	res = a.do("GET", "/v1/restaurants/999999999/menu", "", nil)
+	assert.Equal(t, http.StatusNotFound, res.status)
 }
