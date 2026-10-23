@@ -1,0 +1,10 @@
+# Binaries
+/bin/
+
+# Local settings
+.env
+
+# Editors
+.idea/
+.vscode/
+.DS_Store
