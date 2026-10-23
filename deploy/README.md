@@ -16,10 +16,30 @@ dig +short food-api.sys0.in
 
 ## 2. Install Docker and get the code
 
-Install Docker and its compose plugin, then clone the repo. Every command from now on runs inside this folder on the server:
+Install Docker from Docker's own apt repository. It comes with Compose, and it's newer than Ubuntu's `docker.io` package, which doesn't include Compose. These are the steps from Docker's install guide for Ubuntu (https://docs.docker.com/engine/install/ubuntu/):
 
 ```sh
-sudo apt install docker.io docker-compose-v2
+sudo apt update
+sudo apt install ca-certificates curl
+sudo install -m 0755 -d /etc/apt/keyrings
+sudo curl -fsSL https://download.docker.com/linux/ubuntu/gpg -o /etc/apt/keyrings/docker.asc
+sudo chmod a+r /etc/apt/keyrings/docker.asc
+sudo tee /etc/apt/sources.list.d/docker.sources > /dev/null <<EOF
+Types: deb
+URIs: https://download.docker.com/linux/ubuntu
+Suites: $(. /etc/os-release && echo "${UBUNTU_CODENAME:-$VERSION_CODENAME}")
+Components: stable
+Architectures: $(dpkg --print-architecture)
+Signed-By: /etc/apt/keyrings/docker.asc
+EOF
+sudo apt update
+sudo apt install docker-ce docker-ce-cli containerd.io docker-buildx-plugin docker-compose-plugin
+sudo docker compose version
+```
+
+Then clone the repo. Every command from now on runs inside this folder on the server:
+
+```sh
 git clone https://github.com/codersgyan/the-food-app.git
 cd the-food-app
 ```
