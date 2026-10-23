@@ -2,10 +2,14 @@
 // two customers, and one staff member for each restaurant.
 // It empties every table first, so run it only on your own machine.
 //
-// For load tests, ask for more restaurants. The ones after the first 20 get
-// made-up names, a random spot in Bengaluru, and -dishes dishes each:
+// For load tests, ask for more restaurants and customers. The restaurants
+// after the first 20 get made-up names, a random spot in Bengaluru, -dishes
+// dishes each, and one staff member, who logs in with +9197 and the
+// restaurant's ID in 8 digits (+919700000021 for restaurant 21). The extra
+// customers log in with +9196 and a number in 8 digits (+919600000001), and
+// each has one saved address:
 //
-//	go run ./cmd/seed -restaurants 20000 -dishes 100   # 2 million dishes
+//	go run ./cmd/seed -restaurants 20000 -dishes 100 -customers 10000
 package main
 
 import (
@@ -75,9 +79,10 @@ var restaurants = []restaurant{
 func main() {
 	total := flag.Int("restaurants", len(restaurants), "how many restaurants, at least 20")
 	dishes := flag.Int("dishes", 100, "dishes for each restaurant after the first 20")
+	customers := flag.Int("customers", 0, "how many made-up customers to add")
 	flag.Parse()
-	if *total < len(restaurants) || *dishes < 1 {
-		fmt.Fprintf(os.Stderr, "seed: -restaurants must be at least %d, and -dishes at least 1\n", len(restaurants))
+	if *total < len(restaurants) || *dishes < 1 || *customers < 0 {
+		fmt.Fprintf(os.Stderr, "seed: -restaurants must be at least %d, -dishes at least 1, and -customers at least 0\n", len(restaurants))
 		os.Exit(2)
 	}
 
@@ -85,13 +90,13 @@ func main() {
 	if url == "" {
 		url = "postgres://food:food@localhost:5440/food?sslmode=disable"
 	}
-	if err := seed(context.Background(), url, *total, *dishes); err != nil {
+	if err := seed(context.Background(), url, *total, *dishes, *customers); err != nil {
 		fmt.Fprintln(os.Stderr, "seed:", err)
 		os.Exit(1)
 	}
 }
 
-func seed(ctx context.Context, url string, total, dishesEach int) error {
+func seed(ctx context.Context, url string, total, dishesEach, extraCustomers int) error {
 	conn, err := pgx.Connect(ctx, url)
 	if err != nil {
 		return err
@@ -154,7 +159,12 @@ func seed(ctx context.Context, url string, total, dishesEach int) error {
 		fmt.Printf("seeded %d restaurants, their dishes and staff, and %d customers\n", len(restaurants), len(customers))
 
 		if total > len(restaurants) {
-			return seedMany(ctx, tx, total, dishesEach)
+			if err := seedMany(ctx, tx, total, dishesEach); err != nil {
+				return err
+			}
+		}
+		if extraCustomers > 0 {
+			return seedCustomers(ctx, tx, extraCustomers)
 		}
 		return nil
 	})
@@ -190,7 +200,40 @@ func seedMany(ctx context.Context, tx pgx.Tx, total, dishesEach int) error {
 		return err
 	}
 
-	fmt.Printf("added %d more restaurants with %d dishes each in %s\n",
+	// One staff member for each restaurant, so every restaurant's tablet can log in.
+	_, err = tx.Exec(ctx, `
+		INSERT INTO users (name, phone, role, restaurant_id)
+		SELECT name || ' manager', '+9197' || lpad(id::text, 8, '0'), 'restaurant', id
+		FROM restaurants
+		WHERE id >= $1`,
+		first,
+	)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("added %d more restaurants with %d dishes each, and their staff, in %s\n",
 		total-len(restaurants), dishesEach, time.Since(start).Round(time.Millisecond))
+	return nil
+}
+
+// seedCustomers adds n made-up customers, each with one saved address.
+func seedCustomers(ctx context.Context, tx pgx.Tx, n int) error {
+	start := time.Now()
+	_, err := tx.Exec(ctx, `
+		WITH new AS (
+			INSERT INTO users (name, phone, role)
+			SELECT 'Customer ' || g, '+9196' || lpad(g::text, 8, '0'), 'customer'
+			FROM generate_series(1, $1::int) g
+			RETURNING id
+		)
+		INSERT INTO addresses (user_id, address)
+		SELECT id, 'House ' || id || ', Bengaluru' FROM new`,
+		n,
+	)
+	if err != nil {
+		return err
+	}
+	fmt.Printf("added %d more customers, each with an address, in %s\n", n, time.Since(start).Round(time.Millisecond))
 	return nil
 }

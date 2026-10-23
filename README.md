@@ -221,7 +221,7 @@ The indexes lesson talks about 20,000 restaurants with 100 dishes each, 2 millio
 make seed-big
 ```
 
-It takes about 15 seconds. The first 20 restaurants are the same as in `make seed`, and the rest have made-up names and random spots in Bengaluru.
+It takes about 15 seconds. The first 20 restaurants are the same as in `make seed`, and the rest have made-up names and random spots in Bengaluru. Every restaurant also gets a staff login, so each one's tablet can log in, and there are 10,000 more customers, each with an address. `cmd/seed/main.go` lists their phone numbers.
 
 ## How the code is laid out
 

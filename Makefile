@@ -32,9 +32,10 @@ seed:
 test:
 	go test ./...
 
-# The dataset from the indexes lesson: 20,000 restaurants, 100 dishes each.
+# The dataset from the indexes lesson: 20,000 restaurants with 100 dishes
+# each, a staff login for every restaurant, and 10,000 customers.
 seed-big:
-	go run ./cmd/seed -restaurants 20000 -dishes 100
+	go run ./cmd/seed -restaurants 20000 -dishes 100 -customers 10000
 
 # Start nginx in front of the API server, on localhost:8000.
 proxy:
