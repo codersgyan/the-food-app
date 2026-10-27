@@ -29,7 +29,7 @@ variable "api_instance_type" {
 }
 
 variable "runner_instance_type" {
-  description = "The test runner. It needs more CPU than the API server: at twice the dinner peak, a 2-vCPU runner was nearly full."
+  description = "The test runner: 4 ARM vCPUs, twice the API server, so the runner is never what slows a test down."
   type        = string
   default     = "c7g.xlarge"
 }

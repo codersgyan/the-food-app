@@ -1,3 +1,0 @@
-step,multiplier,tablets,start_utc,end_utc,menu_p99_ms,failed_pct,dropped_pct,nginx_errors,passed
-1,0.05,0,2026-10-23T16:05:13Z,2026-10-23T16:08:27Z,337,0,0,0,1
-2,0.1,0,2026-10-23T16:09:18Z,2026-10-23T16:12:47Z,4596,0,11.74,0,0

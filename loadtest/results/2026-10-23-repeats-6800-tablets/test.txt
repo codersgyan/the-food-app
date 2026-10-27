@@ -1,7 +1,0 @@
-name:             repeats-6800-tablets
-started (UTC):    2026-10-23T16:39:18Z
-target:           https://food-api.sys0.in
-multipliers:      1 1 (1x = 17 orders a second)
-step length:      3m, with 30 s rest between steps
-tablets:          6800, each asking for new orders every 10 s
-note:             none

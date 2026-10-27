@@ -73,9 +73,10 @@ curl -sf -o /dev/null 127.0.0.1:8080/v1/restaurants/1/menu && echo "the API serv
 step "5. Get a certificate, then start nginx"
 sudo apt-get install -y -qq nginx certbot python3-certbot-nginx bind9-dnsutils
 
-# Ubuntu's nginx allows 768 connections per worker. Our load test showed that
-# runs out at twice the dinner peak, so allow more, and let each worker open
-# enough files for them.
+# Ubuntu's nginx allows 768 connections per worker. Each request uses two, one
+# from the client and one to our API server, so with 2 CPUs (2 workers) that's
+# only about 768 clients at once. Allow more, and let each worker open enough
+# files for them.
 sudo sed -i 's/worker_connections 768;/worker_connections 4096;/' /etc/nginx/nginx.conf
 grep -q '^worker_rlimit_nofile' /etc/nginx/nginx.conf ||
   sudo sed -i '/^worker_processes/a worker_rlimit_nofile 8192;' /etc/nginx/nginx.conf

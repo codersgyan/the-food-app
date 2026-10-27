@@ -1,6 +1,0 @@
-name:             customers-only-limit
-started (UTC):    2026-10-23T14:05:42Z
-target:           https://food-api.sys0.in
-multipliers:      1 2 (1x = 17 orders a second)
-step length:      3m, with 30 s rest between steps
-tablets:          0, each asking for new orders every 10 s

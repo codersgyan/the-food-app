@@ -1,6 +1,0 @@
-name:             tablets-limit-1x
-started (UTC):    2026-10-23T14:32:24Z
-target:           https://food-api.sys0.in
-multipliers:      0 20000 (1x = 17 orders a second)
-step length:      3m, with 30 s rest between steps
-tablets:          0, each asking for new orders every 10 s

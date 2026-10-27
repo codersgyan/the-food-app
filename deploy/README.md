@@ -105,7 +105,7 @@ sudo certbot certonly --nginx -d food-api.sys0.in \
 
 The first time, certbot asks for an email address, where Let's Encrypt warns you if a certificate is about to expire, and asks you to agree to the Let's Encrypt Subscriber Agreement. It saves the certificate in `/etc/letsencrypt/live/food-api.sys0.in/`, which is where our nginx config looks for it.
 
-Ubuntu's nginx accepts at most 768 connections per worker process. Each request through nginx uses two: one from the phone, and one to our API server. Our load test showed that runs out at about twice the dinner peak, and then nginx refuses new connections. So allow 4,096 connections per worker, and let each worker open enough files for them, because every connection is an open file:
+Ubuntu's nginx accepts at most 768 connections per worker process. Each request through nginx uses two: one from the client to nginx, and one from nginx to our API server. nginx runs one worker per CPU, so on a 2-CPU server that's only about 768 clients at once, and after that nginx refuses new connections. So allow 4,096 connections per worker, and let each worker open enough files for them, because every connection is an open file:
 
 ```sh
 sudo sed -i 's/worker_connections 768;/worker_connections 4096;/' /etc/nginx/nginx.conf
