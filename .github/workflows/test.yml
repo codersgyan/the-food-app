@@ -10,7 +10,9 @@ jobs:
     runs-on: ubuntu-latest
     services:
       postgres:
-        image: postgres:18
+        # Postgres 18 with PostGIS. CI runs on x86, where the official PostGIS
+        # image works; the servers are ARM, so compose builds docker/postgres.
+        image: postgis/postgis:18-3.6
         env:
           POSTGRES_USER: food
           POSTGRES_PASSWORD: food

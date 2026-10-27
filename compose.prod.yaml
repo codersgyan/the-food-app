@@ -30,7 +30,8 @@ services:
         condition: service_healthy
 
   postgres:
-    image: postgres:18
+    # Postgres 18 with PostGIS, for the spatial index on restaurants.
+    build: ./docker/postgres
     restart: unless-stopped
     environment:
       POSTGRES_USER: food

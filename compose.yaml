@@ -1,6 +1,7 @@
 services:
   postgres:
-    image: postgres:18
+    # Postgres 18 with PostGIS, for the spatial index on restaurants.
+    build: ./docker/postgres
     environment:
       POSTGRES_USER: food
       POSTGRES_PASSWORD: food

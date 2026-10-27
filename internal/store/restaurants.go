@@ -10,26 +10,27 @@ type Restaurant struct {
 }
 
 // RestaurantsNear returns the restaurants within radiusKm of a spot on the
-// map, nearest first.
+// map, nearest first, limit at a time, skipping the first offset.
 //
-// The distance is worked out for every restaurant, with the haversine
-// formula for distance on a sphere (6371 km is the Earth's radius). That
-// means reading the whole table, which is fine while there are a few hundred
-// restaurants. When there are many, this needs a geo index.
-func (s *Store) RestaurantsNear(ctx context.Context, lat, lng, radiusKm float64) ([]Restaurant, error) {
+// ST_MakePoint(lng, lat)::geography is the same expression as the spatial
+// index in migration 00011, and <-> is the distance in metres. Ordering by it
+// lets Postgres walk the index nearest first and stop after limit rows. The
+// radius is checked outside, on those few rows. With the radius inside, as
+// ST_DWithin, Postgres reads every restaurant in the circle and sorts them,
+// which is slower than no index at all when the circle covers a big part of
+// the city.
+func (s *Store) RestaurantsNear(ctx context.Context, lat, lng, radiusKm float64, limit, offset int) ([]Restaurant, error) {
 	rows, err := s.db.Query(ctx, `
-		SELECT id, name, address, distance_km
+		SELECT id, name, address, meters / 1000
 		FROM (
 			SELECT id, name, address,
-			       6371 * 2 * asin(sqrt(
-			           power(sin(radians(lat - $1) / 2), 2) +
-			           cos(radians($1)) * cos(radians(lat)) * power(sin(radians(lng - $2) / 2), 2)
-			       )) AS distance_km
+			       ST_MakePoint(lng, lat)::geography <-> ST_MakePoint($2::float8, $1::float8)::geography AS meters
 			FROM restaurants
-		) r
-		WHERE distance_km <= $3
-		ORDER BY distance_km`,
-		lat, lng, radiusKm,
+			ORDER BY ST_MakePoint(lng, lat)::geography <-> ST_MakePoint($2::float8, $1::float8)::geography
+			LIMIT $4 OFFSET $5
+		) nearest
+		WHERE meters <= $3::float8 * 1000`,
+		lat, lng, radiusKm, limit, offset,
 	)
 	if err != nil {
 		return nil, err
