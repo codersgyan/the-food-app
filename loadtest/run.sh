@@ -30,7 +30,8 @@
 #
 # Before the first step, a one-minute warm-up at 0.5x fills Postgres's and
 # the operating system's caches. It isn't recorded. NOTE is written to
-# test.txt, for anything you changed by hand, like a dropped index.
+# test.txt, for anything you changed by hand, like a dropped index. Each step
+# starts with the orders tables empty.
 #
 # The runner needs k6 and the API server needs the app from deploy/README.md,
 # seeded with: run --rm api seed -restaurants 20000 -dishes 100 -customers 10000
@@ -114,6 +115,10 @@ run_step() {
   STEP=$((STEP + 1))
   S="$(printf %02d "$STEP")-${M}x-${T}t" # names this step's files
   echo "=== step ${M}x, $T tablets"
+  # Every step starts with no orders, like the start of a dinner rush. Without
+  # this, orders paid in the warm-up or in a step the tablets couldn't keep up
+  # with are still waiting, and the tablets in this step cook them as well.
+  api "$COMPOSE exec -T postgres psql -U food -d food -qc 'TRUNCATE order_items, orders'"
   pg_stats "$OUT/pg-$S-before.json"
   local LOG_BEFORE START END NGINX_ERRORS P99 FAILED DROPPED
   LOG_BEFORE=$(api 'sudo wc -l < /var/log/nginx/error.log')

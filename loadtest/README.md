@@ -64,7 +64,7 @@ cd loadtest
 TABLETS=20000 TABLET_INTERVAL=10 ./run.sh with-tablets "1 2 3 5 10"
 ```
 
-Each step lasts 3 minutes (`DURATION`), with 30 seconds of rest between steps (`REST`). A step passes when, for the whole step, menus stay under 1 second at p99 (the requirement from the lessons), under 1% of requests fail, and k6 drops under 1% of the visits because the server couldn't take them in time. The test stops at the first step that doesn't pass.
+Each step lasts 3 minutes (`DURATION`), with 30 seconds of rest between steps (`REST`), and starts with the orders tables empty, like the start of a dinner rush. A step passes when, for the whole step, menus stay under 1 second at p99 (the requirement from the lessons), under 1% of requests fail, and k6 drops under 1% of the visits because the server couldn't take them in time. The test stops at the first step that doesn't pass.
 
 To find the limit more exactly, give it one multiplier that passed and one that failed, with `SEARCH=1`. It tries the middle, keeps the half the limit is in, and stops when the two are 0.1 apart. It writes the answer to `limit.txt`:
 
