@@ -12,7 +12,7 @@ The traffic follows the numbers in the lessons. At the dinner peak, the app gets
 
 1. 1 in 10 visits starts with a login: `POST /v1/login`, then `POST /v1/login/verify`. The others are already logged in.
 2. `GET /v1/me`.
-3. `GET /v1/restaurants?near=…`, from a random spot in Bengaluru.
+3. `GET /v1/restaurants?near=…`, from a random spot in Bengaluru: the first page, the nearest 20 restaurants.
 4. Four menus from the nearest restaurants, `GET /v1/restaurants/{id}/menu`.
 5. 4 in 10 visits then order: `POST /v1/orders` with one to three dishes, `POST /v1/orders/{id}/pay`, and then `GET /v1/orders/{id}` every second until the payment goes through. The other visits only browse.
 

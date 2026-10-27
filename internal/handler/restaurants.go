@@ -10,14 +10,24 @@ import (
 )
 
 // GET /v1/restaurants?near=12.9352,77.6245 lists the restaurants that deliver
-// to that spot on the map, nearest first. The phone sends its own location.
+// to that spot on the map, nearest first, 20 at a time. The phone sends its
+// own location. &page=2 gives the next 20, and so on.
 func (h *handler) restaurantsNear(w http.ResponseWriter, r *http.Request) {
 	lat, lng, ok := parseLatLng(r.URL.Query().Get("near"))
 	if !ok {
 		writeError(w, r, &service.Error{Kind: service.ErrInvalid, Msg: "near must be lat,lng, like near=12.9352,77.6245"})
 		return
 	}
-	list, err := h.svc.Restaurants.Near(r.Context(), lat, lng)
+	page := 1
+	if p := r.URL.Query().Get("page"); p != "" {
+		n, err := strconv.Atoi(p)
+		if err != nil {
+			writeError(w, r, &service.Error{Kind: service.ErrInvalid, Msg: "page must be a whole number, like page=2"})
+			return
+		}
+		page = n
+	}
+	list, err := h.svc.Restaurants.Near(r.Context(), lat, lng, page)
 	if err != nil {
 		writeError(w, r, err)
 		return

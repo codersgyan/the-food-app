@@ -14,12 +14,21 @@ type RestaurantService struct {
 	nearRadiusKm float64
 }
 
-// Near returns the restaurants that deliver to a customer at lat, lng, nearest first.
-func (s *RestaurantService) Near(ctx context.Context, lat, lng float64) ([]store.Restaurant, error) {
+// restaurantsPerPage is how many restaurants one page of Near has: about
+// what a phone screen shows, so the app asks for the next page as the
+// customer scrolls.
+const restaurantsPerPage = 20
+
+// Near returns one page of the restaurants that deliver to a customer at
+// lat, lng, nearest first. Page 1 is the nearest 20.
+func (s *RestaurantService) Near(ctx context.Context, lat, lng float64, page int) ([]store.Restaurant, error) {
 	if lat < -90 || lat > 90 || lng < -180 || lng > 180 {
 		return nil, fail(ErrInvalid, "near must be a real spot on the map")
 	}
-	return s.store.RestaurantsNear(ctx, lat, lng, s.nearRadiusKm)
+	if page < 1 {
+		return nil, fail(ErrInvalid, "page must be 1 or more")
+	}
+	return s.store.RestaurantsNear(ctx, lat, lng, s.nearRadiusKm, restaurantsPerPage, (page-1)*restaurantsPerPage)
 }
 
 // Menu returns a restaurant and all its dishes, including the sold-out ones,

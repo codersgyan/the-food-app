@@ -125,11 +125,10 @@ export function customer() {
   const addressId = me.json('addresses.0.id');
   think();
 
-  // The nearest restaurants come first. Only read the start of the list:
-  // a visitor looks at the top of the screen, not at all 4,000 restaurants.
+  // The first page: the nearest 20 restaurants.
   const near = req('GET', `/v1/restaurants?near=${randomSpot()}`, null, token, 'near');
   if (!check(near, { 'near 200': (r) => r.status === 200 })) return;
-  const nearby = [...near.body.substring(0, 4000).matchAll(/"id":(\d+)/g)].map((m) => Number(m[1]));
+  const nearby = [...near.body.matchAll(/"id":(\d+)/g)].map((m) => Number(m[1]));
   if (nearby.length === 0) return;
   think();
 

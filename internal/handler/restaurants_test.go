@@ -32,12 +32,45 @@ func TestRestaurantsNearListsOnlyThoseInRangeNearestFirst(t *testing.T) {
 	}
 }
 
-func TestRestaurantsNearNeedsAValidSpot(t *testing.T) {
+func TestRestaurantsNearComesInPagesOf20(t *testing.T) {
+	a := newApp(t)
+	var nearestFirst []int64
+	for i := range 25 { // each about 110 m further north than the one before
+		nearestFirst = append(nearestFirst, a.restaurant(fmt.Sprintf("Restaurant %d", i), 12.9352+float64(i)*0.001, 77.6245))
+	}
+
+	page := func(query string) []int64 {
+		res := a.do("GET", "/v1/restaurants?near="+url.QueryEscape("12.9352,77.6245")+query, "", nil)
+		assert.Equal(t, http.StatusOK, res.status)
+		var out struct {
+			Restaurants []struct {
+				ID int64 `json:"id"`
+			} `json:"restaurants"`
+		}
+		res.decode(&out)
+		var ids []int64
+		for _, r := range out.Restaurants {
+			ids = append(ids, r.ID)
+		}
+		return ids
+	}
+
+	assert.Equal(t, nearestFirst[:20], page(""))
+	assert.Equal(t, nearestFirst[:20], page("&page=1"))
+	assert.Equal(t, nearestFirst[20:], page("&page=2"))
+	assert.Empty(t, page("&page=3"))
+}
+
+func TestRestaurantsNearNeedsAValidSpotAndPage(t *testing.T) {
 	a := newApp(t)
 
 	for _, near := range []string{"", "koramangala", "12.93", "95,77.62"} {
 		res := a.do("GET", "/v1/restaurants?near="+url.QueryEscape(near), "", nil)
 		assert.Equal(t, http.StatusBadRequest, res.status, "near=%q", near)
+	}
+	for _, page := range []string{"0", "-1", "two"} {
+		res := a.do("GET", "/v1/restaurants?near=12.9352,77.6245&page="+page, "", nil)
+		assert.Equal(t, http.StatusBadRequest, res.status, "page=%q", page)
 	}
 }
 
