@@ -28,10 +28,11 @@
 #
 #     NOSTOP=1 ./run.sh repeats "1 1.5 1.6 1 1.5 1.6 1 1.5 1.6"
 #
-# Before the first step, a one-minute warm-up at 0.5x fills Postgres's and
-# the operating system's caches. It isn't recorded. NOTE is written to
-# test.txt, for anything you changed by hand, like a dropped index. Each step
-# starts with the orders tables empty.
+# Before the first step, a one-minute warm-up at 0.5x (WARMUP) fills
+# Postgres's and the operating system's caches. It isn't recorded. NOTE is
+# written to test.txt, for anything you changed by hand, like a dropped index.
+# Each step starts with the orders tables empty, unless KEEP_ORDERS=1 (to
+# test the orders index with the orders a real day leaves behind).
 #
 # The runner needs k6 and the API server needs the app from deploy/README.md,
 # seeded with: run --rm api seed -restaurants 20000 -dishes 100 -customers 10000
@@ -47,6 +48,7 @@ DURATION=${DURATION:-3m}
 REST=${REST:-30} # seconds between steps, so one step's tail doesn't spill into the next
 SEARCH_GAP=${SEARCH_GAP:-0.1} # SEARCH=1 stops when the multipliers are this close
 NOTE=${NOTE:-}
+WARMUP=${WARMUP:-0.5} # the warm-up's multiplier: lower it when the server can't keep up with 0.5x
 
 HERE=$(cd "$(dirname "$0")" && pwd)
 OUT="$HERE/results/$(date -u +%Y-%m-%d)-$NAME"
@@ -101,8 +103,8 @@ stop_monitors() {
 trap stop_monitors EXIT
 sleep 10 # a few quiet samples before the first step
 
-echo "warming up for a minute (not recorded)"
-runner "cd /tmp/loadtest && ulimit -n 65535 && k6 run -q -e BASE_URL=$BASE_URL -e MULT=0.5 -e DURATION=1m \
+echo "warming up for a minute at ${WARMUP}x (not recorded)"
+runner "cd /tmp/loadtest && ulimit -n 65535 && k6 run -q -e BASE_URL=$BASE_URL -e MULT=$WARMUP -e DURATION=1m \
   -e TOKENS=tokens.json -e OUT=/dev/null shop.js > /dev/null" || true
 sleep "$REST"
 
@@ -118,7 +120,9 @@ run_step() {
   # Every step starts with no orders, like the start of a dinner rush. Without
   # this, orders paid in the warm-up or in a step the tablets couldn't keep up
   # with are still waiting, and the tablets in this step cook them as well.
-  api "$COMPOSE exec -T postgres psql -U food -d food -qc 'TRUNCATE order_items, orders'"
+  if [ "${KEEP_ORDERS:-0}" != 1 ]; then
+    api "$COMPOSE exec -T postgres psql -U food -d food -qc 'TRUNCATE order_items, orders'"
+  fi
   pg_stats "$OUT/pg-$S-before.json"
   local LOG_BEFORE START END NGINX_ERRORS P99 FAILED DROPPED
   LOG_BEFORE=$(api 'sudo wc -l < /var/log/nginx/error.log')
