@@ -1,0 +1,7 @@
+name:             dinner-rush-2h-6x-20000t
+started (UTC):    2026-10-28T11:23:18Z
+target:           https://food-api.sys0.in
+multipliers:      6 (1x = 17 orders a second)
+step length:      2h, with 30 s rest between steps
+tablets:          20000, each asking for new orders every 10 s
+note:             none

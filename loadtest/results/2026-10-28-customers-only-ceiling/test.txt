@@ -1,0 +1,7 @@
+name:             customers-only-ceiling
+started (UTC):    2026-10-28T10:44:09Z
+target:           https://food-api.sys0.in
+multipliers:      12 16 (1x = 17 orders a second)
+step length:      3m, with 30 s rest between steps
+tablets:          0, each asking for new orders every 10 s
+note:             none

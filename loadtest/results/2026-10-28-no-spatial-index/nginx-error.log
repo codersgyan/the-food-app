@@ -1,0 +1,1 @@
+2026/10/28 14:35:05 [error] 14060#14060: *43796662 upstream prematurely closed connection while reading response header from upstream, client: 13.127.254.56, server: food-api.sys0.in, request: "POST /v1/orders/1224431/pay HTTP/1.1", upstream: "http://127.0.0.1:8080/v1/orders/1224431/pay", host: "food-api.sys0.in"

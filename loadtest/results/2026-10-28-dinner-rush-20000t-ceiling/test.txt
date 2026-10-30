@@ -1,0 +1,7 @@
+name:             dinner-rush-20000t-ceiling
+started (UTC):    2026-10-28T11:11:18Z
+target:           https://food-api.sys0.in
+multipliers:      6 8 (1x = 17 orders a second)
+step length:      3m, with 30 s rest between steps
+tablets:          20000, each asking for new orders every 10 s
+note:             none

@@ -1,0 +1,7 @@
+name:             no-menu-index-ceiling
+started (UTC):    2026-10-28T15:16:53Z
+target:           https://food-api.sys0.in
+multipliers:      0.3 0.4 (1x = 17 orders a second)
+step length:      3m, with 30 s rest between steps
+tablets:          0, each asking for new orders every 10 s
+note:             dishes_restaurant_id_idx dropped by hand for this test

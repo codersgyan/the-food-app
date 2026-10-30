@@ -1,0 +1,18 @@
+MULT=2  orders/s=34  visits/s=85.0  tablets=0 every 10s  duration=3m
+
+request        count     req/s    p50 ms   p95 ms   p99 ms   max ms   failed
+login            1563       8.2       353      487      499      502     0.00%
+verify           1563       8.2       354      486      500      503     0.00%
+me              15301      80.2       1.3      1.6      1.9      5.1     0.00%
+near            15301      80.2       1.5      1.8      2.2      5.7     0.00%
+menu            61204     320.8       1.8      2.4      3.2      7.7     0.00%
+order            6047      31.7       3.0      3.9      4.9      7.7     0.00%
+pay              6047      31.7       3.7      4.9      5.6       11     0.00%
+status          12089      63.4       1.4      1.7      2.1      6.0     0.00%
+ALL            119115     624.4       1.7      3.9      387      503     0.00%
+
+orders placed 6047, paid 6047, cooked 0
+payment time p50 2004 ms, p99 2008 ms
+dropped iterations (k6 couldn't start a visit on time) 0
+max VUs 1275
+

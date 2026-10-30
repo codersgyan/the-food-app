@@ -1,0 +1,7 @@
+name:             no-orders-index-600t
+started (UTC):    2026-10-28T15:02:15Z
+target:           https://food-api.sys0.in
+multipliers:      1 (1x = 17 orders a second)
+step length:      3m, with 30 s rest between steps
+tablets:          600, each asking for new orders every 10 s
+note:             orders_restaurant_id_status_idx dropped by hand; orders kept (KEEP_ORDERS=1); redo of the 600-tablet step

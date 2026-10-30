@@ -1,0 +1,7 @@
+name:             no-spatial-index
+started (UTC):    2026-10-28T14:13:18Z
+target:           https://food-api.sys0.in
+multipliers:      1 2 4 6 8 10 (1x = 17 orders a second)
+step length:      3m, with 30 s rest between steps
+tablets:          0, each asking for new orders every 10 s
+note:             restaurants_location_idx dropped by hand for this test

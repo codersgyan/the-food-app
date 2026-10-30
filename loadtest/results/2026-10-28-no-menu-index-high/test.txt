@@ -1,0 +1,7 @@
+name:             no-menu-index-high
+started (UTC):    2026-10-28T15:09:43Z
+target:           https://food-api.sys0.in
+multipliers:      0.4 0.5 0.6 0.8 1 (1x = 17 orders a second)
+step length:      3m, with 30 s rest between steps
+tablets:          0, each asking for new orders every 10 s
+note:             dishes_restaurant_id_idx dropped by hand for this test

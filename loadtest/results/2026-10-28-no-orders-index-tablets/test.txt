@@ -1,0 +1,7 @@
+name:             no-orders-index-tablets
+started (UTC):    2026-10-28T13:31:38Z
+target:           https://food-api.sys0.in
+multipliers:      0 20000 (1x = 17 orders a second)
+step length:      3m, with 30 s rest between steps
+tablets:          0, each asking for new orders every 10 s
+note:             orders_restaurant_id_status_idx dropped by hand; the 733k orders from the 2-hour run kept (KEEP_ORDERS=1)
